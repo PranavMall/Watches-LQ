@@ -9,10 +9,16 @@ class App {
 
   async init() {
     try {
+      // Check if Supabase is loaded
+      if (typeof supabase === 'undefined') {
+        throw new Error('Supabase library not loaded. Please check your internet connection.');
+      }
+
       // Initialize Supabase
-      const { createClient } = supabase;
-      window.supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-      supabase = window.supabase;
+      window.supabase = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+      
+      // Set global supabase for other modules
+      window.supabaseClient = window.supabase;
 
       // Initialize managers
       this.authManager = new AuthManager();
@@ -23,7 +29,11 @@ class App {
 
       // Register service worker
       if ('serviceWorker' in navigator) {
-        await navigator.serviceWorker.register('/sw.js');
+        try {
+          await navigator.serviceWorker.register('./sw.js');
+        } catch (error) {
+          console.warn('Service worker registration failed:', error);
+        }
       }
 
       // Setup event listeners
@@ -36,7 +46,7 @@ class App {
 
     } catch (error) {
       console.error('App initialization error:', error);
-      this.showError('Failed to initialize app. Please refresh the page.');
+      this.showError('Failed to initialize app. Please check your internet connection and refresh the page.');
     }
   }
 
@@ -223,10 +233,11 @@ class App {
       const card = document.querySelector(`.difficulty-card[data-level="${difficulty}"]`);
       const progress = this.gameManager.getDifficultyProgress(difficulty);
       const isUnlocked = this.gameManager.isDifficultyUnlocked(difficulty);
+      const totalLevels = this.gameManager.gameData[difficulty].length;
 
       // Update completion count
       card.querySelector('.completed').textContent = 
-        `${progress.completed}/${GAME_CONFIG.levelsPerDifficulty}`;
+        `${progress.completed}/${totalLevels}`;
 
       // Update lock status
       if (isUnlocked) {
@@ -421,15 +432,71 @@ class App {
   }
 
   showError(message) {
-    // Simple error display - you can enhance this with a proper modal
-    alert(`Error: ${message}`);
+    // Create a better error display
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-toast';
+    errorDiv.textContent = message;
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #f44336;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 10000;
+      max-width: 300px;
+      animation: slideIn 0.3s ease;
+    `;
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+      errorDiv.remove();
+    }, 4000);
   }
 
   showMessage(message) {
-    // Simple message display - you can enhance this with a proper modal
-    alert(message);
+    // Create a better message display
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message-toast';
+    messageDiv.textContent = message;
+    messageDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4caf50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 10000;
+      max-width: 300px;
+      animation: slideIn 0.3s ease;
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+      messageDiv.remove();
+    }, 4000);
   }
 }
+
+// Add toast animation CSS
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`;
+document.head.appendChild(style);
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
