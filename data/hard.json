@@ -1,0 +1,82 @@
+[
+  {
+    "id": 21,
+    "name": "F.P.JOURNE",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/fpj-transparent-background-with-white-logo-10cda3f2999f33f23179486fb7160be7.png",
+    "hints": ["Invenit et Fecit", "Independent watchmaker", "Boutique manufacture"],
+    "founded": "1999",
+    "description": "Modern independent watchmaker creating innovative high-end timepieces."
+  },
+  {
+    "id": 22,
+    "name": "GREUBEL FORSEY",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/greubel-forsey-96055703dce1a6ee367135b6c48785a1.png",
+    "hints": ["Double tourbillon", "La Chaux-de-Fonds", "Extreme complications"],
+    "founded": "2004",
+    "description": "Ultra-haute horlogerie brand specializing in complex tourbillon movements."
+  },
+  {
+    "id": 23,
+    "name": "LAURENT FERRIER",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/laurent-a114325f46e4420a5b1f0b7a9b9fa697.png",
+    "hints": ["Ex-Patek Philippe", "Geneva manufacture", "Classical elegance"],
+    "founded": "2010",
+    "description": "Independent Swiss brand by former Patek Philippe master watchmaker."
+  },
+  {
+    "id": 24,
+    "name": "REXHEP REXHEPI",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/akrivia-9e292e151e645261728c85028486a638.png",
+    "hints": ["Akrivia", "Young independent", "Geneva based"],
+    "founded": "2012",
+    "description": "Rising star in independent watchmaking with exceptional hand-finishing skills."
+  },
+  {
+    "id": 25,
+    "name": "VOUTILAINEN",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-1-7499626aedae52247958b8476c16bd3d.png",
+    "hints": ["Finnish watchmaker", "Hand-made dials", "Independent artisan"],
+    "founded": "2002",
+    "description": "Finnish independent watchmaker renowned for artistic dials and complications."
+  },
+  {
+    "id": 26,
+    "name": "LUDOVIC BALLOUARD",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/lb-c40a9535e8a83f68bfb7befa327b8799.png",
+    "hints": ["Independent Geneva", "Upside Down collection", "Artistic complications"],
+    "founded": "2009",
+    "description": "Geneva-based independent creating playful and innovative timepieces."
+  },
+  {
+    "id": 27,
+    "name": "KUDOKE",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-9-07ccbe53d9049feb9f3d743009c59ce1.png",
+    "hints": ["German manufacture", "One-man workshop", "Skeleton movements"],
+    "founded": "2016",
+    "description": "German independent watchmaker creating all components in-house."
+  },
+  {
+    "id": 28,
+    "name": "KOLLOKIUM",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-8-34f3f014945317447f2bc90eaa00fae8.png",
+    "hints": ["Swiss independent", "Artistic approach", "Limited production"],
+    "founded": "2018",
+    "description": "Swiss independent brand with an artistic approach to haute horlogerie."
+  },
+  {
+    "id": 29,
+    "name": "SINGER REIMAGINED",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-18-97e5f71d18b7559cf16613c0b86c7342.png",
+    "hints": ["Geneva based", "Track1 collection", "Independent manufacture"],
+    "founded": "2018",
+    "description": "Geneva-based independent creating contemporary haute horlogerie pieces."
+  },
+  {
+    "id": 30,
+    "name": "ARMIN STROM",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/armin-strom-203a4683bc43de1a7764b15b2d3dec98.png",
+    "hints": ["Swiss manufacture", "Skeleton specialists", "Racing collection"],
+    "founded": "1967",
+    "description": "Swiss manufacture specializing in skeleton movements and racing-inspired designs."
+  }
+]
