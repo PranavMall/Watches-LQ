@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watches Logo Quiz</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/style.css">
+    <meta name="theme-color" content="#1a1a1a">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⌚</text></svg>">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="screen active">
+        <div class="loading-content">
+            <div class="logo">⌚</div>
+            <h1>Watches Logo Quiz</h1>
+            <div class="spinner"></div>
+            <p>Loading amazing watch brands...</p>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen">
+        <div class="container">
+            <div class="logo-section">
+                <div class="logo">⌚</div>
+                <h1>Watches Logo Quiz</h1>
+                <p>Test your knowledge of luxury watch brands</p>
+            </div>
+            
+            <div class="auth-section">
+                <div id="guest-section">
+                    <button id="play-as-guest" class="btn btn-primary">Play as Guest</button>
+                    <button id="show-login" class="btn btn-secondary">Login / Register</button>
+                </div>
+                
+                <div id="auth-forms" class="hidden">
+                    <div id="login-form" class="auth-form">
+                        <h3>Welcome Back</h3>
+                        <input type="email" id="login-email" placeholder="Email" required>
+                        <input type="password" id="login-password" placeholder="Password" required>
+                        <button id="login-btn" class="btn btn-primary">Login</button>
+                        <p>Don't have an account? <a href="#" id="show-register">Register here</a></p>
+                    </div>
+                    
+                    <div id="register-form" class="auth-form hidden">
+                        <h3>Create Account</h3>
+                        <input type="text" id="register-name" placeholder="Display Name" required>
+                        <input type="email" id="register-email" placeholder="Email" required>
+                        <input type="password" id="register-password" placeholder="Password" required>
+                        <button id="register-btn" class="btn btn-primary">Register</button>
+                        <p>Already have an account? <a href="#" id="show-login-link">Login here</a></p>
+                    </div>
+                    
+                    <button id="back-to-guest" class="btn btn-text">← Back</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Selection Screen -->
+    <div id="level-select-screen" class="screen">
+        <div class="container">
+            <header class="game-header">
+                <button id="logout-btn" class="btn btn-text">Logout</button>
+                <h2>Select Difficulty</h2>
+                <div class="user-info">
+                    <span id="user-name">Guest</span>
+                    <span id="total-score">0 pts</span>
+                </div>
+            </header>
+            
+            <div class="difficulty-levels">
+                <div class="difficulty-card" data-level="easy">
+                    <div class="difficulty-icon">🟢</div>
+                    <h3>Easy</h3>
+                    <p>Popular luxury brands</p>
+                    <div class="progress-info">
+                        <span class="completed">0/20</span>
+                        <div class="status">Available</div>
+                    </div>
+                </div>
+                
+                <div class="difficulty-card locked" data-level="medium">
+                    <div class="difficulty-icon">🟡</div>
+                    <h3>Medium</h3>
+                    <p>Boutique and heritage brands</p>
+                    <div class="progress-info">
+                        <span class="completed">0/20</span>
+                        <div class="status">Complete 10 Easy levels</div>
+                    </div>
+                </div>
+                
+                <div class="difficulty-card locked" data-level="hard">
+                    <div class="difficulty-icon">🔴</div>
+                    <h3>Hard</h3>
+                    <p>Independent and niche brands</p>
+                    <div class="progress-info">
+                        <span class="completed">0/20</span>
+                        <div class="status">Complete 10 Medium levels</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <div class="container">
+            <header class="game-header">
+                <button id="back-to-levels" class="btn btn-text">← Back</button>
+                <div class="level-info">
+                    <span id="current-level">Easy 1/20</span>
+                    <span id="current-score">0 pts</span>
+                </div>
+            </header>
+            
+            <div class="game-content">
+                <div class="logo-container">
+                    <img id="brand-logo" src="" alt="Brand Logo" class="brand-image">
+                </div>
+                
+                <div class="word-display" id="word-display"></div>
+                
+                <div class="letters-container" id="letters-container"></div>
+                
+                <div class="game-actions">
+                    <button id="hint-btn" class="btn btn-secondary">💡 Hint (-10 pts)</button>
+                    <button id="reveal-btn" class="btn btn-secondary">👁️ Reveal Letter (-15 pts)</button>
+                </div>
+                
+                <div class="hint-display" id="hint-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Complete Screen -->
+    <div id="level-complete-screen" class="screen">
+        <div class="container">
+            <div class="completion-content">
+                <div class="logo-reveal">
+                    <img id="completed-logo" src="" alt="Brand Logo" class="brand-image">
+                    <h2 id="completed-brand-name">ROLEX</h2>
+                </div>
+                
+                <div class="completion-stats">
+                    <div class="stat">
+                        <span class="label">Score</span>
+                        <span class="value" id="level-score">100 pts</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Attempts</span>
+                        <span class="value" id="level-attempts">5</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Founded</span>
+                        <span class="value" id="brand-founded">1905</span>
+                    </div>
+                </div>
+                
+                <div class="brand-info">
+                    <p id="brand-description">Swiss luxury watch manufacturer known for precision and prestige.</p>
+                </div>
+                
+                <div class="completion-actions">
+                    <button id="next-level-btn" class="btn btn-primary">Next Level</button>
+                    <button id="back-to-levels-complete" class="btn btn-secondary">Level Select</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
