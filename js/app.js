@@ -398,6 +398,39 @@ class App {
 
     // Clear hint display
     document.getElementById('hint-display').textContent = '';
+    
+    // Update hint and reveal button visibility based on score
+    this.updateActionButtons();
+  }
+  
+  updateActionButtons() {
+    const hintBtn = document.getElementById('hint-btn');
+    const revealBtn = document.getElementById('reveal-btn');
+    
+    // Update hint button
+    if (hintBtn) {
+      const canUseHint = this.gameManager.canUseHint();
+      const hintCost = this.gameManager.hintsUsed === 0 ? 10 : 15;
+      
+      if (!canUseHint) {
+        hintBtn.style.display = 'none';
+      } else {
+        hintBtn.style.display = 'inline-block';
+        hintBtn.innerHTML = `💡 Hint (-${hintCost} pts)`;
+      }
+    }
+    
+    // Update reveal button
+    if (revealBtn) {
+      const canUseReveal = this.gameManager.canUseReveal();
+      
+      if (!canUseReveal) {
+        revealBtn.style.display = 'none';
+      } else {
+        revealBtn.style.display = 'inline-block';
+        revealBtn.innerHTML = '👁️ Reveal Letter (-15 pts)';
+      }
+    }
   }
 
   updateLetterButtons() {
@@ -435,6 +468,9 @@ class App {
       button.classList.add('correct');
       // Update word display
       document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
+      
+      // Update action buttons visibility after each guess
+      this.updateActionButtons();
       
       if (result.complete) {
         this.handleLevelComplete();
@@ -490,8 +526,11 @@ class App {
     
     if (result.success) {
       document.getElementById('hint-display').textContent = result.hint;
+      // Update score display with new total score
       document.getElementById('current-score').textContent = 
-        `${this.gameManager.getTotalScore()} pts`;
+        `${result.newTotalScore} pts`;
+      // Update action buttons visibility
+      this.updateActionButtons();
     } else {
       this.showError(result.message);
     }
@@ -501,8 +540,10 @@ class App {
     const result = this.gameManager.revealLetter();
     
     if (result.success) {
+      // Update word display
       document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
       
+      // Update letter buttons
       const buttons = document.querySelectorAll('.letter-btn');
       buttons.forEach(button => {
         if (button.textContent === result.letter) {
@@ -511,9 +552,14 @@ class App {
         }
       });
       
+      // Update score display with new total score
       document.getElementById('current-score').textContent = 
-        `${this.gameManager.getTotalScore()} pts`;
+        `${result.newTotalScore} pts`;
       
+      // Update action buttons visibility
+      this.updateActionButtons();
+      
+      // Check if word is complete
       const wordComplete = this.gameManager.currentWord
         .split('')
         .every(char => char === ' ' || this.gameManager.guessedLetters.includes(char));
