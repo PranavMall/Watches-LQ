@@ -3,88 +3,175 @@ class App {
     this.authManager = null;
     this.gameManager = null;
     this.currentScreen = 'loading';
+    this.isInitialized = false;
     
+    // Start initialization
     this.init();
   }
 
   async init() {
     try {
-      // Check if Supabase is loaded
-      if (typeof supabase === 'undefined') {
-        throw new Error('Supabase library not loaded. Please check your internet connection.');
-      }
-
-      // Initialize Supabase
-      window.supabase = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+      console.log('App init started...');
       
-      // Set global supabase for other modules
-      window.supabaseClient = window.supabase;
+      // Update loading status
+      this.updateLoadingStatus('Initializing Supabase...');
+      
+      // Initialize Supabase with a timeout
+      const supabaseInit = new Promise((resolve, reject) => {
+        setTimeout(() => {
+          if (typeof window.supabase !== 'undefined') {
+            try {
+              window.supabaseClient = window.supabase.createClient(
+                SUPABASE_CONFIG.url, 
+                SUPABASE_CONFIG.anonKey
+              );
+              console.log('Supabase initialized successfully');
+              resolve();
+            } catch (error) {
+              console.error('Supabase init error:', error);
+              reject(error);
+            }
+          } else {
+            console.warn('Supabase not available, continuing without it');
+            resolve(); // Continue without Supabase
+          }
+        }, 100);
+      });
 
-      // Initialize managers
+      await Promise.race([
+        supabaseInit,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase timeout')), 3000))
+      ]).catch(err => {
+        console.warn('Supabase initialization failed, continuing offline:', err);
+      });
+
+      // Update loading status
+      this.updateLoadingStatus('Loading game managers...');
+
+      // Initialize managers (they should handle missing Supabase gracefully)
       this.authManager = new AuthManager();
       this.gameManager = new GameManager(this.authManager);
 
-      // Load game data
-      await this.gameManager.loadGameData();
+      // Update loading status
+      this.updateLoadingStatus('Loading game data...');
 
-      // Register service worker
+      // Load game data with timeout
+      await Promise.race([
+        this.gameManager.loadGameData(),
+        new Promise((resolve) => setTimeout(() => {
+          console.warn('Game data loading timeout, using defaults');
+          resolve();
+        }, 3000))
+      ]);
+
+      // Register service worker (non-blocking)
       if ('serviceWorker' in navigator) {
-        try {
-          await navigator.serviceWorker.register('./sw.js');
-        } catch (error) {
-          console.warn('Service worker registration failed:', error);
-        }
+        navigator.serviceWorker.register('./sw.js').catch(err => 
+          console.warn('Service worker registration failed:', err)
+        );
       }
 
       // Setup event listeners
       this.setupEventListeners();
 
-      // Show start screen after loading
+      // Update loading status
+      this.updateLoadingStatus('Ready to play!');
+
+      // Mark as initialized
+      this.isInitialized = true;
+
+      // Show start screen after a short delay
       setTimeout(() => {
+        console.log('Showing start screen...');
         this.showScreen('start');
-      }, 2000);
+      }, 1000);
 
     } catch (error) {
-      console.error('App initialization error:', error);
-      this.showError('Failed to initialize app. Please check your internet connection and refresh the page.');
+      console.error('Critical app initialization error:', error);
+      this.handleInitError(error);
     }
   }
 
+  updateLoadingStatus(message) {
+    const statusElement = document.getElementById('loading-status');
+    if (statusElement) {
+      statusElement.textContent = message;
+    }
+    console.log('Status:', message);
+  }
+
+  handleInitError(error) {
+    console.error('Initialization failed:', error);
+    
+    // Try to continue anyway
+    this.updateLoadingStatus('Starting in offline mode...');
+    
+    // Initialize with defaults
+    if (!this.authManager) {
+      this.authManager = new AuthManager();
+    }
+    if (!this.gameManager) {
+      this.gameManager = new GameManager(this.authManager);
+    }
+    
+    // Setup listeners
+    this.setupEventListeners();
+    
+    // Show start screen
+    setTimeout(() => {
+      this.showScreen('start');
+    }, 1000);
+  }
+
   setupEventListeners() {
+    console.log('Setting up event listeners...');
+    
     // Auth events
-    document.getElementById('play-as-guest').addEventListener('click', () => {
-      this.handleGuestPlay();
-    });
+    const playAsGuestBtn = document.getElementById('play-as-guest');
+    if (playAsGuestBtn) {
+      playAsGuestBtn.addEventListener('click', () => this.handleGuestPlay());
+    }
 
-    document.getElementById('show-login').addEventListener('click', () => {
-      this.showAuthForms();
-    });
+    const showLoginBtn = document.getElementById('show-login');
+    if (showLoginBtn) {
+      showLoginBtn.addEventListener('click', () => this.showAuthForms());
+    }
 
-    document.getElementById('login-btn').addEventListener('click', () => {
-      this.handleLogin();
-    });
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', () => this.handleLogin());
+    }
 
-    document.getElementById('register-btn').addEventListener('click', () => {
-      this.handleRegister();
-    });
+    const registerBtn = document.getElementById('register-btn');
+    if (registerBtn) {
+      registerBtn.addEventListener('click', () => this.handleRegister());
+    }
 
-    document.getElementById('show-register').addEventListener('click', (e) => {
-      e.preventDefault();
-      this.showRegisterForm();
-    });
+    const showRegisterLink = document.getElementById('show-register');
+    if (showRegisterLink) {
+      showRegisterLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showRegisterForm();
+      });
+    }
 
-    document.getElementById('show-login-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      this.showLoginForm();
-    });
+    const showLoginLink = document.getElementById('show-login-link');
+    if (showLoginLink) {
+      showLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showLoginForm();
+      });
+    }
 
-    document.getElementById('back-to-guest').addEventListener('click', () => {
-      this.hideAuthForms();
-    });
+    const backToGuestBtn = document.getElementById('back-to-guest');
+    if (backToGuestBtn) {
+      backToGuestBtn.addEventListener('click', () => this.hideAuthForms());
+    }
 
-    document.getElementById('logout-btn').addEventListener('click', () => {
-      this.handleLogout();
-    });
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => this.handleLogout());
+    }
 
     // Game events
     document.querySelectorAll('.difficulty-card').forEach(card => {
@@ -93,51 +180,52 @@ class App {
       });
     });
 
-    document.getElementById('back-to-levels').addEventListener('click', () => {
-      this.showLevelSelect();
-    });
+    const backToLevelsBtn = document.getElementById('back-to-levels');
+    if (backToLevelsBtn) {
+      backToLevelsBtn.addEventListener('click', () => this.showLevelSelect());
+    }
 
-    document.getElementById('back-to-levels-complete').addEventListener('click', () => {
-      this.showLevelSelect();
-    });
+    const backToLevelsCompleteBtn = document.getElementById('back-to-levels-complete');
+    if (backToLevelsCompleteBtn) {
+      backToLevelsCompleteBtn.addEventListener('click', () => this.showLevelSelect());
+    }
 
-    document.getElementById('hint-btn').addEventListener('click', () => {
-      this.handleHint();
-    });
+    const hintBtn = document.getElementById('hint-btn');
+    if (hintBtn) {
+      hintBtn.addEventListener('click', () => this.handleHint());
+    }
 
-    document.getElementById('reveal-btn').addEventListener('click', () => {
-      this.handleReveal();
-    });
+    const revealBtn = document.getElementById('reveal-btn');
+    if (revealBtn) {
+      revealBtn.addEventListener('click', () => this.handleReveal());
+    }
 
-    document.getElementById('next-level-btn').addEventListener('click', () => {
-      this.handleNextLevel();
-    });
-
-    // Handle form submissions
-    document.getElementById('login-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.handleLogin();
-    });
-
-    document.getElementById('register-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.handleRegister();
-    });
+    const nextLevelBtn = document.getElementById('next-level-btn');
+    if (nextLevelBtn) {
+      nextLevelBtn.addEventListener('click', () => this.handleNextLevel());
+    }
   }
 
   showScreen(screenId) {
+    console.log('Showing screen:', screenId);
+    
     // Hide all screens
     document.querySelectorAll('.screen').forEach(screen => {
       screen.classList.remove('active');
     });
 
     // Show target screen
-    document.getElementById(`${screenId}-screen`).classList.add('active');
-    this.currentScreen = screenId;
+    const targetScreen = document.getElementById(`${screenId}-screen`);
+    if (targetScreen) {
+      targetScreen.classList.add('active');
+      this.currentScreen = screenId;
 
-    // Update screen-specific content
-    if (screenId === 'level-select') {
-      this.updateLevelSelect();
+      // Update screen-specific content
+      if (screenId === 'level-select') {
+        this.updateLevelSelect();
+      }
+    } else {
+      console.error('Screen not found:', screenId);
     }
   }
 
@@ -162,6 +250,7 @@ class App {
   }
 
   async handleGuestPlay() {
+    console.log('Playing as guest...');
     const result = await this.authManager.playAsGuest();
     if (result.success) {
       this.showScreen('level-select');
@@ -182,7 +271,7 @@ class App {
     if (result.success) {
       this.showScreen('level-select');
     } else {
-      this.showError(result.error);
+      this.showError(result.error || 'Login failed');
     }
   }
 
@@ -210,7 +299,7 @@ class App {
         this.showScreen('level-select');
       }
     } else {
-      this.showError(result.error);
+      this.showError(result.error || 'Registration failed');
     }
   }
 
@@ -231,24 +320,32 @@ class App {
     // Update difficulty cards
     ['easy', 'medium', 'hard'].forEach(difficulty => {
       const card = document.querySelector(`.difficulty-card[data-level="${difficulty}"]`);
+      if (!card) return;
+      
       const progress = this.gameManager.getDifficultyProgress(difficulty);
       const isUnlocked = this.gameManager.isDifficultyUnlocked(difficulty);
-      const totalLevels = this.gameManager.gameData[difficulty].length;
+      const totalLevels = this.gameManager.gameData[difficulty]?.length || 10;
 
       // Update completion count
-      card.querySelector('.completed').textContent = 
-        `${progress.completed}/${totalLevels}`;
+      const completedElement = card.querySelector('.completed');
+      if (completedElement) {
+        completedElement.textContent = `${progress.completed}/${totalLevels}`;
+      }
 
       // Update lock status
+      const statusElement = card.querySelector('.status');
       if (isUnlocked) {
         card.classList.remove('locked');
-        card.querySelector('.status').textContent = 'Available';
+        if (statusElement) {
+          statusElement.textContent = 'Available';
+        }
       } else {
         card.classList.add('locked');
-        const requiredDifficulty = difficulty === 'medium' ? 'Easy' : 'Medium';
-        const required = GAME_CONFIG.unlockRequirement[difficulty];
-        card.querySelector('.status').textContent = 
-          `Complete ${required} ${requiredDifficulty} levels`;
+        if (statusElement) {
+          const requiredDifficulty = difficulty === 'medium' ? 'Easy' : 'Medium';
+          const required = GAME_CONFIG.unlockRequirement[difficulty];
+          statusElement.textContent = `Complete ${required} ${requiredDifficulty} levels`;
+        }
       }
     });
   }
@@ -263,7 +360,7 @@ class App {
     if (this.gameManager.startLevel(difficulty)) {
       this.showGameScreen();
     } else {
-      this.showError('Failed to start level');
+      this.showError('No levels available in this difficulty');
     }
   }
 
@@ -274,6 +371,11 @@ class App {
 
   updateGameScreen() {
     const brand = this.gameManager.getCurrentBrand();
+    if (!brand) {
+      this.showError('No brand data available');
+      return;
+    }
+
     const levelInfo = this.gameManager.getCurrentLevelInfo();
 
     // Update header
@@ -282,8 +384,11 @@ class App {
     document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
 
     // Update logo
-    document.getElementById('brand-logo').src = brand.image;
-    document.getElementById('brand-logo').alt = `${brand.name} Logo`;
+    const logoElement = document.getElementById('brand-logo');
+    if (logoElement) {
+      logoElement.src = brand.image;
+      logoElement.alt = 'Guess the brand';
+    }
 
     // Update word display
     document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
@@ -356,17 +461,13 @@ class App {
     document.getElementById('brand-description').textContent = 
       brand.description || 'A prestigious watch manufacturer.';
 
-    // Update total score in header
-    document.getElementById('current-score').textContent = `${stats.totalScore} pts`;
-
     this.showScreen('level-complete');
   }
 
   handleNextLevel() {
-    // Try to start next level in same difficulty
     const currentDifficulty = this.gameManager.currentDifficulty;
     const currentLevel = this.gameManager.currentLevel;
-    const availableLevels = this.gameManager.gameData[currentDifficulty].length;
+    const availableLevels = this.gameManager.gameData[currentDifficulty]?.length || 0;
 
     if (currentLevel + 1 < availableLevels) {
       if (this.gameManager.startLevel(currentDifficulty, currentLevel + 1)) {
@@ -375,7 +476,6 @@ class App {
         this.showLevelSelect();
       }
     } else {
-      // No more levels in this difficulty
       this.showMessage('Congratulations! You completed all levels in this difficulty.');
       this.showLevelSelect();
     }
@@ -390,7 +490,6 @@ class App {
     
     if (result.success) {
       document.getElementById('hint-display').textContent = result.hint;
-      // Update score display
       document.getElementById('current-score').textContent = 
         `${this.gameManager.getTotalScore()} pts`;
     } else {
@@ -402,10 +501,8 @@ class App {
     const result = this.gameManager.revealLetter();
     
     if (result.success) {
-      // Update word display
       document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
       
-      // Update letter button
       const buttons = document.querySelectorAll('.letter-btn');
       buttons.forEach(button => {
         if (button.textContent === result.letter) {
@@ -414,11 +511,9 @@ class App {
         }
       });
       
-      // Update score display
       document.getElementById('current-score').textContent = 
         `${this.gameManager.getTotalScore()} pts`;
       
-      // Check if word is complete
       const wordComplete = this.gameManager.currentWord
         .split('')
         .every(char => char === ' ' || this.gameManager.guessedLetters.includes(char));
@@ -432,7 +527,6 @@ class App {
   }
 
   showError(message) {
-    // Create a better error display
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-toast';
     errorDiv.textContent = message;
@@ -457,7 +551,6 @@ class App {
   }
 
   showMessage(message) {
-    // Create a better message display
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message-toast';
     messageDiv.textContent = message;
@@ -500,5 +593,6 @@ document.head.appendChild(style);
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  new App();
+  console.log('DOM loaded, creating app...');
+  window.app = new App();
 });
