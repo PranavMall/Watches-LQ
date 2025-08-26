@@ -8,7 +8,7 @@ class AuthManager {
   async initializeAuth() {
     try {
       // Check for existing session
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session }, error } = await window.supabase.auth.getSession();
       
       if (error) {
         console.error('Auth session error:', error);
@@ -26,7 +26,7 @@ class AuthManager {
 
   async loginWithEmail(email, password) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await window.supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -44,7 +44,7 @@ class AuthManager {
 
   async registerWithEmail(email, password, displayName) {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await window.supabase.auth.signUp({
         email,
         password,
         options: {
@@ -70,7 +70,7 @@ class AuthManager {
 
   async createUserProfile(userId, displayName, email) {
     try {
-      const { error } = await supabase
+      const { error } = await window.supabase
         .from('user_profiles')
         .insert([
           {
@@ -92,7 +92,7 @@ class AuthManager {
     if (!this.currentUser) return null;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await window.supabase
         .from('user_profiles')
         .select('*')
         .eq('id', this.currentUser.id)
@@ -138,7 +138,7 @@ class AuthManager {
     }
 
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await window.supabase.auth.signOut();
       if (error) throw error;
 
       this.currentUser = null;
