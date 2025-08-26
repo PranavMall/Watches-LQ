@@ -77,7 +77,7 @@
                     <h3>Easy</h3>
                     <p>Popular luxury brands</p>
                     <div class="progress-info">
-                        <span class="completed">0/20</span>
+                        <span class="completed">0/10</span>
                         <div class="status">Available</div>
                     </div>
                 </div>
@@ -87,8 +87,8 @@
                     <h3>Medium</h3>
                     <p>Boutique and heritage brands</p>
                     <div class="progress-info">
-                        <span class="completed">0/20</span>
-                        <div class="status">Complete 10 Easy levels</div>
+                        <span class="completed">0/10</span>
+                        <div class="status">Complete 5 Easy levels</div>
                     </div>
                 </div>
                 
@@ -97,8 +97,8 @@
                     <h3>Hard</h3>
                     <p>Independent and niche brands</p>
                     <div class="progress-info">
-                        <span class="completed">0/20</span>
-                        <div class="status">Complete 10 Medium levels</div>
+                        <span class="completed">0/10</span>
+                        <div class="status">Complete 5 Medium levels</div>
                     </div>
                 </div>
             </div>
@@ -111,7 +111,7 @@
             <header class="game-header">
                 <button id="back-to-levels" class="btn btn-text">← Back</button>
                 <div class="level-info">
-                    <span id="current-level">Easy 1/20</span>
+                    <span id="current-level">Easy 1/10</span>
                     <span id="current-score">0 pts</span>
                 </div>
             </header>
@@ -170,11 +170,12 @@
             </div>
         </div>
     </div>
-    <!-- Scripts -->
+
+    <!-- Load Supabase BEFORE your app scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/game.js"></script>
     <script src="js/app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </body>
 </html>
