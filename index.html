@@ -6,7 +6,7 @@
     <title>Dubai Watch Week - Logo Quiz</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/style.css">
-    <meta name="theme-color" content="#1a1a1a">
+    <meta name="theme-color" content="#622744">
     <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⌚</text></svg>">
 </head>
 <body>
@@ -33,6 +33,12 @@
             <div class="auth-section">
                 <div id="guest-section">
                     <button id="play-as-guest" class="btn btn-primary">Play as Guest</button>
+                    
+                    <div id="guest-name-input" class="guest-name-input">
+                        <input type="text" id="guest-name" placeholder="Enter your name" maxlength="20" required>
+                        <button id="start-guest-game" class="btn btn-primary">Start Playing</button>
+                    </div>
+                    
                     <button id="show-login" class="btn btn-secondary">Login / Register</button>
                 </div>
                 
@@ -103,6 +109,19 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Leaderboard -->
+            <div class="leaderboard-container">
+                <h3>Leaderboard</h3>
+                <div class="leaderboard-tabs">
+                    <button class="leaderboard-tab active" data-timeframe="all">All Time</button>
+                    <button class="leaderboard-tab" data-timeframe="weekly">This Week</button>
+                    <button class="leaderboard-tab" data-timeframe="daily">Today</button>
+                </div>
+                <div class="leaderboard-list" id="leaderboard-list">
+                    <!-- Leaderboard items will be loaded here -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -118,6 +137,26 @@
             </header>
             
             <div class="game-content">
+                <!-- Game Stats Bar -->
+                <div class="game-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Timer</span>
+                        <span class="stat-value timer" id="timer">0:00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Score</span>
+                        <span class="stat-value" id="level-score-display">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Strikes</span>
+                        <div class="strikes">
+                            <span class="strike" id="strike-1"></span>
+                            <span class="strike" id="strike-2"></span>
+                            <span class="strike" id="strike-3"></span>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="logo-container">
                     <img id="brand-logo" src="" alt="Brand Logo" class="brand-image">
                 </div>
@@ -148,16 +187,26 @@
                 <div class="completion-stats">
                     <div class="stat">
                         <span class="label">Score</span>
-                        <span class="value" id="level-score">100 pts</span>
+                        <span class="value" id="final-level-score">100 pts</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Time</span>
+                        <span class="value" id="final-time">0:00</span>
                     </div>
                     <div class="stat">
                         <span class="label">Attempts</span>
-                        <span class="value" id="level-attempts">5</span>
+                        <span class="value" id="final-attempts">5</span>
                     </div>
                     <div class="stat">
                         <span class="label">Founded</span>
                         <span class="value" id="brand-founded">1905</span>
                     </div>
+                </div>
+                
+                <!-- Achievements -->
+                <div id="achievements" class="achievements hidden">
+                    <h3>Achievements Unlocked!</h3>
+                    <div class="achievement-list" id="achievement-list"></div>
                 </div>
                 
                 <div class="brand-info">
@@ -172,13 +221,31 @@
         </div>
     </div>
 
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="screen">
+        <div class="container">
+            <div class="completion-content">
+                <h2>Game Over!</h2>
+                <p>You've run out of strikes!</p>
+                
+                <div class="logo-reveal">
+                    <img id="gameover-logo" src="" alt="Brand Logo" class="brand-image">
+                    <h3>The answer was:</h3>
+                    <h2 id="gameover-brand-name">ROLEX</h2>
+                </div>
+                
+                <div class="completion-actions">
+                    <button id="retry-level-btn" class="btn btn-primary">Try Again</button>
+                    <button id="back-to-levels-gameover" class="btn btn-secondary">Level Select</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Immediately log that we're starting
-        console.log('Starting app initialization...');
-        
-        // Quick config setup
+        // Configuration
         const SUPABASE_CONFIG = {
             url: 'https://xttecjpmfzisjhhlukfl.supabase.co',
             anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGVjanBtZnppc2poaGx1a2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxODU1ODksImV4cCI6MjA3MTc2MTU4OX0.UaKYYSeWj6nkxO2EU73Eoa2zlaYdSX6CGQGyQ_33edE'
