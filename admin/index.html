@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watches Logo Quiz - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #1a1a1a;
+            color: white;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 0.5rem;
+            color: #d4af37;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .admin-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-card h2 {
+            margin-bottom: 1.5rem;
+            color: #1a1a1a;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #d4af37;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #d4af37, #e6c75a);
+            color: #1a1a1a;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .image-preview {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .image-preview img {
+            max-width: 200px;
+            max-height: 150px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+
+        .image-editor {
+            margin-top: 1rem;
+            padding: 1rem;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .canvas-container {
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .canvas-container canvas {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            max-width: 100%;
+        }
+
+        .editor-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .brush-size {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brush-size input[type="range"] {
+            width: 100px;
+        }
+
+        .brand-list {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .brand-list h2 {
+            background: #1a1a1a;
+            color: white;
+            padding: 1.5rem;
+            margin: 0;
+        }
+
+        .brand-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .brand-item:last-child {
+            border-bottom: none;
+        }
+
+        .brand-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .brand-info {
+            flex: 1;
+        }
+
+        .brand-info h3 {
+            margin-bottom: 0.25rem;
+            color: #1a1a1a;
+        }
+
+        .brand-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .brand-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .editor-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .brand-item {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⌚ Watches Logo Quiz</h1>
+            <p>Admin Panel - Manage Watch Brands & Logos</p>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alert-container"></div>
+
+        <div class="admin-grid">
+            <!-- Add/Edit Brand Form -->
+            <div class="admin-card">
+                <h2>Add New Brand</h2>
+                <form id="brand-form">
+                    <div class="form-group">
+                        <label for="brand-name">Brand Name</label>
+                        <input type="text" id="brand-name" required placeholder="e.g., ROLEX">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="brand-image-url">Original Image URL</label>
+                        <input type="url" id="brand-image-url" required placeholder="https://...">
+                        <button type="button" id="load-image" class="btn btn-secondary">Load Image</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="brand-difficulty">Difficulty Level</label>
+                        <select id="brand-difficulty" required>
+                            <option value="">Select Difficulty</option>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="brand-founded">Founded Year</label>
+                        <input type="number" id="brand-founded" placeholder="e.g., 1905">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="brand-hint1">Hint 1</label>
+                        <input type="text" id="brand-hint1" placeholder="e.g., Swiss luxury watchmaker">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="brand-hint2">Hint 2</label>
+                        <input type="text" id="brand-hint2" placeholder="e.g., Crown logo">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="brand-hint3">Hint 3</label>
+                        <input type="text" id="brand-hint3" placeholder="e.g., Submariner and Daytona">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="brand-description">Description</label>
+                        <textarea id="brand-description" placeholder="Brief description of the brand..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Add Brand</button>
+                    <button type="button" id="clear-form" class="btn btn-secondary">Clear Form</button>
+                </form>
+            </div>
+
+            <!-- Image Editor -->
+            <div class="admin-card">
+                <h2>Image Editor</h2>
+                <div class="image-editor">
+                    <div id="original-preview" class="image-preview hidden">
+                        <p>Original Image:</p>
+                        <img id="original-image" src="" alt="Original">
+                    </div>
+
+                    <div id="canvas-editor" class="canvas-container hidden">
+                        <p>Edit Image (Remove text/logos):</p>
+                        <canvas id="edit-canvas" width="400" height="300"></canvas>
+                        
+                        <div class="editor-controls">
+                            <div class="brush-size">
+                                <label>Brush Size:</label>
+                                <input type="range" id="brush-size" min="5" max="50" value="20">
+                                <span id="brush-size-value">20px</span>
+                            </div>
+                            <button id="blur-mode" class="btn btn-secondary">Blur Mode</button>
+                            <button id="paint-mode" class="btn btn-secondary">Paint Mode</button>
+                            <button id="crop-mode" class="btn btn-secondary">Crop Mode</button>
+                            <button id="undo-edit" class="btn btn-secondary">Undo</button>
+                            <button id="reset-image" class="btn btn-secondary">Reset</button>
+                        </div>
+                    </div>
+
+                    <div id="edited-preview" class="image-preview hidden">
+                        <p>Edited Image:</p>
+                        <img id="edited-image" src="" alt="Edited">
+                        <br>
+                        <button id="save-edited-image" class="btn btn-primary">Save Edited Image</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brand List -->
+        <div class="brand-list">
+            <h2>Current Brands</h2>
+            <div id="brand-list-container">
+                <!-- Brand items will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AdminPanel {
+            constructor() {
+                this.canvas = null;
+                this.ctx = null;
+                this.originalImageData = null;
+                this.editHistory = [];
+                this.currentEditMode = 'paint';
+                this.brushSize = 20;
+                this.isDrawing = false;
+                
+                this.brands = {
+                    easy: [],
+                    medium: [],
+                    hard: []
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.loadExistingBrands();
+            }
+
+            setupEventListeners() {
+                // Form submission
+                document.getElementById('brand-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleBrandSubmission();
+                });
+
+                // Image loading
+                document.getElementById('load-image').addEventListener('click', () => {
+                    this.loadImageForEditing();
+                });
+
+                // Form clearing
+                document.getElementById('clear-form').addEventListener('click', () => {
+                    this.clearForm();
+                });
+
+                // Image editor controls
+                document.getElementById('brush-size').addEventListener('input', (e) => {
+                    this.brushSize = e.target.value;
+                    document.getElementById('brush-size-value').textContent = e.target.value + 'px';
+                });
+
+                document.getElementById('blur-mode').addEventListener('click', () => {
+                    this.setEditMode('blur');
+                });
+
+                document.getElementById('paint-mode').addEventListener('click', () => {
+                    this.setEditMode('paint');
+                });
+
+                document.getElementById('crop-mode').addEventListener('click', () => {
+                    this.setEditMode('crop');
+                });
+
+                document.getElementById('undo-edit').addEventListener('click', () => {
+                    this.undoLastEdit();
+                });
+
+                document.getElementById('reset-image').addEventListener('click', () => {
+                    this.resetImage();
+                });
+
+                document.getElementById('save-edited-image').addEventListener('click', () => {
+                    this.saveEditedImage();
+                });
+            }
+
+            async loadImageForEditing() {
+                const imageUrl = document.getElementById('brand-image-url').value;
+                if (!imageUrl) {
+                    this.showAlert('Please enter an image URL first', 'error');
+                    return;
+                }
+
+                try {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    
+                    img.onload = () => {
+                        this.setupImageEditor(img);
+                        document.getElementById('original-preview').classList.remove('hidden');
+                        document.getElementById('original-image').src = imageUrl;
+                    };
+                    
+                    img.onerror = () => {
+                        this.showAlert('Failed to load image. Please check the URL.', 'error');
+                    };
+                    
+                    img.src = imageUrl;
+                } catch (error) {
+                    this.showAlert('Error loading image: ' + error.message, 'error');
+                }
+            }
+
+            setupImageEditor(img) {
+                this.canvas = document.getElementById('edit-canvas');
+                this.ctx = this.canvas.getContext('2d');
+
+                // Set canvas size to image size (with max constraints)
+                const maxWidth = 400;
+                const maxHeight = 300;
+                const ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
+                
+                this.canvas.width = img.width * ratio;
+                this.canvas.height = img.height * ratio;
+
+                // Draw image on canvas
+                this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+                this.originalImageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                
+                document.getElementById('canvas-editor').classList.remove('hidden');
+                this.setupCanvasEvents();
+            }
+
+            setupCanvasEvents() {
+                const rect = this.canvas.getBoundingClientRect();
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.isDrawing = true;
+                    this.saveEditState();
+                    this.performEdit(e);
+                });
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (this.isDrawing) {
+                        this.performEdit(e);
+                    }
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isDrawing = false;
+                });
+
+                this.canvas.addEventListener('mouseout', () => {
+                    this.isDrawing = false;
+                });
+
+                // Touch events for mobile
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+
+                this.canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    const mouseEvent = new MouseEvent('mouseup', {});
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+            }
+
+            performEdit(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                this.ctx.save();
+                
+                if (this.currentEditMode === 'paint') {
+                    this.ctx.globalCompositeOperation = 'source-over';
+                    this.ctx.fillStyle = '#f0f0f0';
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, this.brushSize / 2, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                } else if (this.currentEditMode === 'blur') {
+                    // Simple blur effect by averaging nearby pixels
+                    const imageData = this.ctx.getImageData(x - this.brushSize/2, y - this.brushSize/2, this.brushSize, this.brushSize);
+                    this.applyBlur(imageData);
+                    this.ctx.putImageData(imageData, x - this.brushSize/2, y - this.brushSize/2);
+                }
+                
+                this.ctx.restore();
+            }
+
+            applyBlur(imageData) {
+                // Simple box blur implementation
+                const data = imageData.data;
+                const width = imageData.width;
+                const height = imageData.height;
+                const radius = 2;
+                
+                for (let y = radius; y < height - radius; y++) {
+                    for (let x = radius; x < width - radius; x++) {
+                        let r = 0, g = 0, b = 0, count = 0;
+                        
+                        for (let dy = -radius; dy <= radius; dy++) {
+                            for (let dx = -radius; dx <= radius; dx++) {
+                                const i = ((y + dy) * width + (x + dx)) * 4;
+                                r += data[i];
+                                g += data[i + 1];
+                                b += data[i + 2];
+                                count++;
+                            }
+                        }
+                        
+                        const i = (y * width + x) * 4;
+                        data[i] = r / count;
+                        data[i + 1] = g / count;
+                        data[i + 2] = b / count;
+                    }
+                }
+            }
+
+            setEditMode(mode) {
+                this.currentEditMode = mode;
+                
+                // Update button styles
+                document.querySelectorAll('#canvas-editor .btn').forEach(btn => {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-secondary');
+                });
+                
+                document.getElementById(mode + '-mode').classList.remove('btn-secondary');
+                document.getElementById(mode + '-mode').classList.add('btn-primary');
+            }
+
+            saveEditState() {
+                if (this.editHistory.length >= 10) {
+                    this.editHistory.shift();
+                }
+                this.editHistory.push(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height));
+            }
+
+            undoLastEdit() {
+                if (this.editHistory.length > 0) {
+                    const previousState = this.editHistory.pop();
+                    this.ctx.putImageData(previousState, 0, 0);
+                }
+            }
+
+            resetImage() {
+                if (this.originalImageData) {
+                    this.ctx.putImageData(this.originalImageData, 0, 0);
+                    this.editHistory = [];
+                }
+            }
+
+            saveEditedImage() {
+                const editedDataUrl = this.canvas.toDataURL('image/png');
+                document.getElementById('edited-image').src = editedDataUrl;
+                document.getElementById('edited-preview').classList.remove('hidden');
+                
+                // Store the edited image data URL for form submission
+                document.getElementById('brand-form').dataset.editedImage = editedDataUrl;
+                
+                this.showAlert('Image edited successfully! Ready to add to brand.', 'success');
+            }
+
+            handleBrandSubmission() {
+                const formData = this.getFormData();
+                
+                if (!formData.name || !formData.difficulty) {
+                    this.showAlert('Please fill in required fields (Name and Difficulty)', 'error');
+                    return;
+                }
+
+                // Use edited image if available, otherwise original
+                const imageUrl = document.getElementById('brand-form').dataset.editedImage || formData.imageUrl;
+                
+                const brand = {
+                    id: Date.now(),
+                    name: formData.name.toUpperCase(),
+                    image: imageUrl,
+                    hints: [formData.hint1, formData.hint2, formData.hint3].filter(hint => hint.trim()),
+                    founded: formData.founded,
+                    description: formData.description
+                };
+
+                // Add to appropriate difficulty level
+                this.brands[formData.difficulty].push(brand);
+                
+                // Generate updated JSON
+                this.generateJSON(formData.difficulty);
+                
+                this.showAlert(`Brand "${brand.name}" added successfully to ${formData.difficulty} level!`, 'success');
+                this.clearForm();
+                this.updateBrandList();
+            }
+
+            getFormData() {
+                return {
+                    name: document.getElementById('brand-name').value,
+                    imageUrl: document.getElementById('brand-image-url').value,
+                    difficulty: document.getElementById('brand-difficulty').value,
+                    founded: document.getElementById('brand-founded').value,
+                    hint1: document.getElementById('brand-hint1').value,
+                    hint2: document.getElementById('brand-hint2').value,
+                    hint3: document.getElementById('brand-hint3').value,
+                    description: document.getElementById('brand-description').value
+                };
+            }
+
+            generateJSON(difficulty) {
+                const jsonData = JSON.stringify(this.brands[difficulty], null, 2);
+                
+                // Create downloadable file
+                const blob = new Blob([jsonData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${difficulty}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            clearForm() {
+                document.getElementById('brand-form').reset();
+                document.getElementById('brand-form').removeAttribute('data-edited-image');
+                document.getElementById('original-preview').classList.add('hidden');
+                document.getElementById('canvas-editor').classList.add('hidden');
+                document.getElementById('edited-preview').classList.add('hidden');
+            }
+
+            async loadExistingBrands() {
+                const difficulties = ['easy', 'medium', 'hard'];
+                
+                for (const difficulty of difficulties) {
+                    try {
+                        const response = await fetch(`../data/${difficulty}.json`);
+                        if (response.ok) {
+                            this.brands[difficulty] = await response.json();
+                        }
+                    } catch (error) {
+                        console.warn(`Could not load ${difficulty} brands:`, error);
+                    }
+                }
+                
+                this.updateBrandList();
+            }
+
+            updateBrandList() {
+                const container = document.getElementById('brand-list-container');
+                container.innerHTML = '';
+
+                Object.entries(this.brands).forEach(([difficulty, brands]) => {
+                    if (brands.length > 0) {
+                        const difficultySection = document.createElement('div');
+                        difficultySection.innerHTML = `
+                            <h3 style="padding: 1rem; background: #f8f9fa; margin: 0; text-transform: capitalize; border-bottom: 1px solid #ddd;">
+                                ${difficulty} (${brands.length} brands)
+                            </h3>
+                        `;
+                        container.appendChild(difficultySection);
+
+                        brands.forEach(brand => {
+                            const brandItem = document.createElement('div');
+                            brandItem.className = 'brand-item';
+                            brandItem.innerHTML = `
+                                <img src="${brand.image}" alt="${brand.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 100 100\\"><rect fill=\\"%23ddd\\" width=\\"100\\" height=\\"100\\"/><text y=\\".5em\\" font-size=\\"14\\" text-anchor=\\"middle\\" x=\\"50\\" fill=\\"%23999\\">No Image</text></svg>'">
+                                <div class="brand-info">
+                                    <h3>${brand.name}</h3>
+                                    <p>Founded: ${brand.founded || 'Unknown'} | Hints: ${brand.hints.length}</p>
+                                    <p>${brand.description || 'No description available'}</p>
+                                </div>
+                                <div class="brand-actions">
+                                    <button class="btn btn-secondary btn-small" onclick="adminPanel.editBrand('${difficulty}', ${brand.id})">Edit</button>
+                                    <button class="btn btn-secondary btn-small" onclick="adminPanel.deleteBrand('${difficulty}', ${brand.id})">Delete</button>
+                                </div>
+                            `;
+                            container.appendChild(brandItem);
+                        });
+                    }
+                });
+
+                if (container.children.length === 0) {
+                    container.innerHTML = '<p style="padding: 2rem; text-align: center; color: #666;">No brands added yet. Start by adding your first brand above!</p>';
+                }
+            }
+
+            editBrand(difficulty, brandId) {
+                const brand = this.brands[difficulty].find(b => b.id === brandId);
+                if (!brand) return;
+
+                // Populate form with brand data
+                document.getElementById('brand-name').value = brand.name;
+                document.getElementById('brand-image-url').value = brand.image;
+                document.getElementById('brand-difficulty').value = difficulty;
+                document.getElementById('brand-founded').value = brand.founded || '';
+                document.getElementById('brand-hint1').value = brand.hints[0] || '';
+                document.getElementById('brand-hint2').value = brand.hints[1] || '';
+                document.getElementById('brand-hint3').value = brand.hints[2] || '';
+                document.getElementById('brand-description').value = brand.description || '';
+
+                // Remove the brand from the list (will be re-added when form is submitted)
+                this.deleteBrand(difficulty, brandId, false);
+                
+                this.showAlert(`Editing "${brand.name}". Make changes and click "Add Brand" to save.`, 'success');
+            }
+
+            deleteBrand(difficulty, brandId, showConfirm = true) {
+                if (showConfirm && !confirm('Are you sure you want to delete this brand?')) {
+                    return;
+                }
+
+                this.brands[difficulty] = this.brands[difficulty].filter(b => b.id !== brandId);
+                this.updateBrandList();
+                
+                if (showConfirm) {
+                    this.showAlert('Brand deleted successfully!', 'success');
+                }
+            }
+
+            showAlert(message, type) {
+                const alertContainer = document.getElementById('alert-container');
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type}`;
+                alertDiv.textContent = message;
+                
+                alertContainer.appendChild(alertDiv);
+                
+                setTimeout(() => {
+                    alertDiv.remove();
+                }, 5000);
+            }
+        }
+
+        // Initialize admin panel
+        const adminPanel = new AdminPanel();
+    </script>
+</body>
+</html>
