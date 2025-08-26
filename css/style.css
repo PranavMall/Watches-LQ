@@ -20,12 +20,16 @@
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: linear-gradient(135deg, var(--primary-color) 0%, #2c2c2c 100%);
   color: var(--text-primary);
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
 .container {
@@ -39,17 +43,19 @@ body {
   display: none;
   min-height: 100vh;
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .screen.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Loading Screen */
 #loading-screen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--primary-color);
 }
 
@@ -83,14 +89,27 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* Start Screen */
+/* Start Screen - Fixed to prevent scrolling */
+#start-screen {
+  padding: 20px;
+}
+
+#start-screen .container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 40px);
+  padding: 20px;
+}
+
 .logo-section {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
 }
 
 .logo-section h1 {
-  font-size: 2.5rem;
+  font-size: 2rem;
   margin: 1rem 0;
   background: linear-gradient(45deg, var(--accent-color), #fff);
   -webkit-background-clip: text;
@@ -100,37 +119,38 @@ body {
 
 .logo-section p {
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
-/* Auth Section */
+/* Auth Section - Compact */
 .auth-section {
+  width: 100%;
   max-width: 400px;
-  margin: 0 auto;
 }
 
 .auth-form {
   background: rgba(255, 255, 255, 0.05);
-  padding: 2rem;
+  padding: 1.5rem;
   border-radius: var(--border-radius);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .auth-form h3 {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   text-align: center;
+  font-size: 1.2rem;
 }
 
 .auth-form input {
   width: 100%;
-  padding: 12px 16px;
-  margin-bottom: 1rem;
+  padding: 10px 14px;
+  margin-bottom: 0.75rem;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.95rem;
   transition: var(--transition);
 }
 
@@ -144,12 +164,32 @@ body {
   color: var(--text-secondary);
 }
 
+.auth-form p {
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* Level Select and Game Screens */
+#level-select-screen,
+#game-screen,
+#level-complete-screen {
+  display: none;
+  overflow-y: auto;
+}
+
+#level-select-screen.active,
+#game-screen.active,
+#level-complete-screen.active {
+  display: block;
+}
+
 /* Buttons */
 .btn {
-  padding: 12px 24px;
+  padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
@@ -157,7 +197,7 @@ body {
   display: inline-block;
   text-align: center;
   width: 100%;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .btn-primary {
@@ -174,6 +214,7 @@ body {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  width: auto;
 }
 
 .btn-secondary:hover {
@@ -185,6 +226,7 @@ body {
   color: var(--text-secondary);
   width: auto;
   margin: 0;
+  padding: 8px 16px;
 }
 
 .btn-text:hover {
@@ -194,14 +236,14 @@ body {
 /* Difficulty Levels */
 .difficulty-levels {
   display: grid;
-  gap: 2rem;
-  margin-top: 2rem;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
 }
 
 .difficulty-card {
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--border-radius);
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
   cursor: pointer;
   transition: var(--transition);
@@ -220,8 +262,8 @@ body {
 }
 
 .difficulty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .difficulty-card h3 {
@@ -230,8 +272,8 @@ body {
 }
 
 .progress-info {
-  margin-top: 1rem;
-  padding-top: 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -241,9 +283,9 @@ body {
 }
 
 .status {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 /* Game Header */
@@ -251,7 +293,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -265,8 +307,8 @@ body {
 /* Game Content */
 .logo-container {
   text-align: center;
-  margin-bottom: 2rem;
-  padding: 2rem;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--border-radius);
 }
@@ -285,7 +327,7 @@ body {
   font-size: 2rem;
   font-weight: bold;
   letter-spacing: 0.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   font-family: 'Courier New', monospace;
   color: var(--accent-color);
 }
@@ -293,21 +335,21 @@ body {
 /* Letters Container */
 .letters-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
-  gap: 10px;
-  margin-bottom: 2rem;
-  max-width: 400px;
+  grid-template-columns: repeat(auto-fit, minmax(45px, 1fr));
+  gap: 8px;
+  margin-bottom: 1.5rem;
+  max-width: 360px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .letter-btn {
-  width: 50px;
-  height: 50px;
+  width: 45px;
+  height: 45px;
   border: 2px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: bold;
   border-radius: 8px;
   cursor: pointer;
@@ -329,13 +371,14 @@ body {
   display: flex;
   gap: 1rem;
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .game-actions .btn {
   width: auto;
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  padding: 8px 16px;
 }
 
 /* Hint Display */
@@ -344,7 +387,7 @@ body {
   font-style: italic;
   color: var(--accent-color);
   min-height: 2rem;
-  padding: 1rem;
+  padding: 0.75rem;
   background: rgba(212, 175, 55, 0.1);
   border-radius: 8px;
   border-left: 4px solid var(--accent-color);
@@ -358,12 +401,12 @@ body {
 }
 
 .logo-reveal {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .logo-reveal h2 {
   margin-top: 1rem;
-  font-size: 2.5rem;
+  font-size: 2rem;
   color: var(--accent-color);
 }
 
@@ -371,8 +414,8 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--border-radius);
 }
@@ -383,25 +426,25 @@ body {
 
 .stat .label {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .stat .value {
   display: block;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: bold;
   color: var(--accent-color);
 }
 
 .brand-info {
-  margin-bottom: 2rem;
-  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--border-radius);
-  font-size: 1.1rem;
-  line-height: 1.6;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .completion-actions {
@@ -433,7 +476,7 @@ body {
   }
   
   .logo-section h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
   
   .word-display {
@@ -456,6 +499,10 @@ body {
     flex-direction: column;
   }
   
+  .game-actions .btn {
+    width: 100%;
+  }
+  
   .completion-stats {
     grid-template-columns: 1fr;
     gap: 0.5rem;
@@ -470,24 +517,37 @@ body {
   }
   
   .difficulty-card {
-    padding: 1.5rem;
+    padding: 1rem;
+  }
+  
+  .difficulty-icon {
+    font-size: 2rem;
   }
 }
 
 @media (max-width: 480px) {
   .game-header {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.5rem;
     align-items: stretch;
   }
   
   .level-info, .user-info {
     justify-content: center;
+    font-size: 0.9rem;
   }
   
   .brand-image {
     max-width: 150px;
     max-height: 120px;
+  }
+  
+  .auth-form {
+    padding: 1rem;
+  }
+  
+  .logo-section h1 {
+    font-size: 1.25rem;
   }
 }
 
