@@ -4,21 +4,30 @@ class App {
     this.gameManager = null;
     this.currentScreen = 'loading';
     
-    this.init();
+    // Wait for DOM to be ready before initializing
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.init());
+    } else {
+      this.init();
+    }
   }
 
   async init() {
     try {
       // Check if Supabase is loaded
-      if (typeof supabase === 'undefined') {
+      if (typeof supabase === 'undefined' || !supabase) {
         throw new Error('Supabase library not loaded. Please check your internet connection.');
       }
 
       // Initialize Supabase
       window.supabase = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
       
-      // Set global supabase for other modules
-      window.supabaseClient = window.supabase;
+      // Test Supabase connection
+      const { error } = await window.supabase.from('user_profiles').select('count').limit(1);
+      if (error) {
+        console.warn('Supabase connection issue:', error);
+        // Continue anyway - might just be empty table
+      }
 
       // Initialize managers
       this.authManager = new AuthManager();
@@ -498,7 +507,20 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize app - will be called by the script loader in index.html
+window.initializeApp = () => {
   new App();
-});
+};
+
+// Fallback initialization if script loader doesn't work
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof SUPABASE_CONFIG !== 'undefined' && typeof supabase !== 'undefined') {
+      new App();
+    }
+  });
+} else {
+  if (typeof SUPABASE_CONFIG !== 'undefined' && typeof supabase !== 'undefined') {
+    new App();
+  }
+}
