@@ -49,36 +49,36 @@ class GameManager {
         {
           id: 1,
           name: "ROLEX",
-          image: "https://w7.pngwing.com/pngs/1018/823/png-transparent-tata-motors-logo-car-tamo-racemo-philippines-car-blue-text-logo-thumbnail.png",
+          image: "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/rolex-0d36f5efd88b1d9592b7326acf018830.png",
           hints: ["Swiss luxury watchmaker", "Crown logo", "Submariner and Daytona"],
           founded: "1905",
           description: "World's most recognized luxury watch brand known for precision and prestige."
         },
         {
           id: 2,
-          name: "OMEGA",
-          image: "https://w7.pngwing.com/pngs/1018/823/png-transparent-tata-motors-logo-car-tamo-racemo-philippines-car-blue-text-logo-thumbnail.png",
-          hints: ["Swiss watchmaker", "Olympic timekeeper", "Speedmaster to the moon"],
-          founded: "1903",
-          description: "Famous for the Speedmaster worn on the moon and as Olympic timekeeper."
+          name: "TUDOR",
+          image: "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/tudor-88d373cf4079f77b61e3eca38aa0a3fe.png",
+          hints: ["Rolex sister brand", "Shield logo", "Black Bay collection"],
+          founded: "1946",
+          description: "Hans Wilsdorf's vision for an affordable luxury watch with Rolex heritage."
         }
       ],
       medium: [
         {
           id: 3,
-          name: "PATEK PHILIPPE",
-          image: "https://w7.pngwing.com/pngs/1018/823/png-transparent-tata-motors-logo-car-tamo-racemo-philippines-car-blue-text-logo-thumbnail.png",
-          hints: ["Geneva manufacture", "Calatrava cross", "You never actually own"],
-          founded: "1839",
-          description: "The ultimate luxury watch manufacturer known for complications and heritage."
+          name: "AUDEMARS PIGUET",
+          image: "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/logoapdark-f4e9ae527f5bbbe325b8a9c6dd14a0f4.png",
+          hints: ["Royal Oak model", "Octagonal bezel", "Swiss haute horlogerie"],
+          founded: "1875",
+          description: "Luxury Swiss manufacturer famous for the iconic Royal Oak sports watch."
         }
       ],
       hard: [
         {
           id: 4,
           name: "F.P.JOURNE",
-          image: "https://w7.pngwing.com/pngs/1018/823/png-transparent-tata-motors-logo-car-tamo-racemo-philippines-car-blue-text-logo-thumbnail.png",
-          hints: ["Independent watchmaker", "Invenit et Fecit", "Boutique manufacture"],
+          image: "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/fpj-transparent-background-with-white-logo-10cda3f2999f33f23179486fb7160be7.png",
+          hints: ["Invenit et Fecit", "Independent watchmaker", "Boutique manufacture"],
           founded: "1999",
           description: "Modern independent watchmaker creating innovative high-end timepieces."
         }
@@ -94,13 +94,17 @@ class GameManager {
       // For guests, use localStorage
       const savedProgress = localStorage.getItem('watches_lq_progress');
       if (savedProgress) {
-        this.userProgress = JSON.parse(savedProgress);
+        try {
+          this.userProgress = JSON.parse(savedProgress);
+        } catch (error) {
+          console.error('Failed to parse saved progress:', error);
+        }
       }
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await window.supabase
         .from('user_progress')
         .select('*')
         .eq('user_id', user.id);
@@ -136,7 +140,7 @@ class GameManager {
     try {
       // Save to Supabase for authenticated users
       for (const [difficulty, progress] of Object.entries(this.userProgress)) {
-        const { error } = await supabase
+        const { error } = await window.supabase
           .from('user_progress')
           .upsert([
             {
