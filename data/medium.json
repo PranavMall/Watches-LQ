@@ -1,0 +1,82 @@
+[
+  {
+    "id": 11,
+    "name": "AUDEMARS PIGUET",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/logoapdark-f4e9ae527f5bbbe325b8a9c6dd14a0f4.png",
+    "hints": ["Royal Oak model", "Octagonal bezel", "Swiss haute horlogerie"],
+    "founded": "1875",
+    "description": "Luxury Swiss manufacturer famous for the iconic Royal Oak sports watch."
+  },
+  {
+    "id": 12,
+    "name": "GIRARD PERREGAUX",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/girard-perregaux-4c42a670d3e64e0dd1185274a5668782.png",
+    "hints": ["La Chaux-de-Fonds", "Three gold bridges", "Swiss manufacture"],
+    "founded": "1791",
+    "description": "Historic Swiss manufacture known for innovative movements and the famous Three Bridges."
+  },
+  {
+    "id": 13,
+    "name": "PARMIGIANI FLEURIER",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-1-b60371adb26386ccac57bea92228a765.png",
+    "hints": ["Swiss manufacture", "Michel Parmigiani", "Toric collection"],
+    "founded": "1996",
+    "description": "Independent Swiss manufacture known for exceptional craftsmanship and finishing."
+  },
+  {
+    "id": 14,
+    "name": "BOVET",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/bovet-transparent-background-with-white-logo-dcb0a21a81f388e3eb991d72d3892b70.png",
+    "hints": ["Fleurier manufacture", "Amadeo case", "Artistic timepieces"],
+    "founded": "1822",
+    "description": "Swiss luxury brand known for artistic complications and unique case designs."
+  },
+  {
+    "id": 15,
+    "name": "JACOB & CO",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/jacob-blck-dadd8990d17ebba8a0b200e0fbedea4a.png",
+    "hints": ["New York based", "Astronomia collection", "Extravagant designs"],
+    "founded": "1986",
+    "description": "American luxury brand known for extraordinary complications and bold designs."
+  },
+  {
+    "id": 16,
+    "name": "ROGER DUBUIS",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-cdd7e7c1c0aef017b839062cc097831e.png",
+    "hints": ["Excalibur collection", "Skeleton watches", "Geneva Seal"],
+    "founded": "1995",
+    "description": "Swiss manufacture specializing in skeleton watches and avant-garde designs."
+  },
+  {
+    "id": 17,
+    "name": "RESSENCE",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/ressence-fe5ba46cc525d80c19df304663a32680.png",
+    "hints": ["Belgian innovation", "Oil-filled displays", "Type series"],
+    "founded": "2010",
+    "description": "Belgian brand revolutionizing time display with oil-filled complications."
+  },
+  {
+    "id": 18,
+    "name": "HYT",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/hyt-transparent-background-with-white-logo-2-730794e592290b81f5c125288e2674d2.png",
+    "hints": ["Liquid time display", "Hydro-mechanical", "Swiss innovation"],
+    "founded": "2012",
+    "description": "Revolutionary brand displaying time through colored liquids in tubes."
+  },
+  {
+    "id": 19,
+    "name": "CYRUS GENEVE",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-32-e7c3fef7dc6f77e3dd24f6d02e59d10c.png",
+    "hints": ["Geneva based", "Kuros collection", "Independent manufacture"],
+    "founded": "2010",
+    "description": "Independent Geneva-based brand creating distinctive haute horlogerie pieces."
+  },
+  {
+    "id": 20,
+    "name": "CZAPEK GENEVE",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-22-8e94a35ea9f371471608ee79cb23b706.png",
+    "hints": ["Geneva manufacture", "Antarctique collection", "Independent brand"],
+    "founded": "2012",
+    "description": "Modern Geneva-based independent manufacture with vintage-inspired designs."
+  }
+]
