@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Watches Logo Quiz</title>
+    <title>Dubai Watch Week - Logo Quiz</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/style.css">
     <meta name="theme-color" content="#1a1a1a">
@@ -14,9 +14,10 @@
     <div id="loading-screen" class="screen active">
         <div class="loading-content">
             <div class="logo">⌚</div>
-            <h1>Watches Logo Quiz</h1>
+            <h1>Dubai Watch Week</h1>
+            <h2>Logo Quiz</h2>
             <div class="spinner"></div>
-            <p>Loading amazing watch brands...</p>
+            <p id="loading-status">Loading amazing watch brands...</p>
         </div>
     </div>
 
@@ -25,7 +26,7 @@
         <div class="container">
             <div class="logo-section">
                 <div class="logo">⌚</div>
-                <h1>Watches Logo Quiz</h1>
+                <h1>Dubai Watch Week Logo Quiz</h1>
                 <p>Test your knowledge of luxury watch brands</p>
             </div>
             
@@ -63,7 +64,7 @@
     <div id="level-select-screen" class="screen">
         <div class="container">
             <header class="game-header">
-                <button id="logout-btn" class="btn btn-text">Logout</button>
+                <button id="logout-btn" class="btn btn-text">← Back</button>
                 <h2>Select Difficulty</h2>
                 <div class="user-info">
                     <span id="user-name">Guest</span>
@@ -160,7 +161,7 @@
                 </div>
                 
                 <div class="brand-info">
-                    <p id="brand-description">Swiss luxury watch manufacturer known for precision and prestige.</p>
+                    <p id="brand-description">A prestigious watch manufacturer.</p>
                 </div>
                 
                 <div class="completion-actions">
@@ -171,52 +172,37 @@
         </div>
     </div>
 
-    <!-- Load Supabase with fallback and proper error handling -->
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Load Supabase with fallback
-        function loadSupabase() {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-                script.onload = () => {
-                    if (typeof supabase !== 'undefined') {
-                        resolve(supabase);
-                    } else {
-                        reject(new Error('Supabase library failed to load'));
-                    }
-                };
-                script.onerror = () => reject(new Error('Failed to load Supabase script'));
-                document.head.appendChild(script);
-            });
-        }
+        // Immediately log that we're starting
+        console.log('Starting app initialization...');
+        
+        // Quick config setup
+        const SUPABASE_CONFIG = {
+            url: 'https://xttecjpmfzisjhhlukfl.supabase.co',
+            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGVjanBtZnppc2poaGx1a2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxODU1ODksImV4cCI6MjA3MTc2MTU4OX0.UaKYYSeWj6nkxO2EU73Eoa2zlaYdSX6CGQGyQ_33edE'
+        };
 
-        // Initialize app after Supabase loads
-        loadSupabase().then(() => {
-            console.log('Supabase loaded successfully');
-            // Load app scripts
-            const scripts = [
-                'js/config.js',
-                'js/auth.js', 
-                'js/game.js',
-                'js/app.js'
-            ];
-            
-            let loadedScripts = 0;
-            scripts.forEach(src => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = () => {
-                    loadedScripts++;
-                    if (loadedScripts === scripts.length) {
-                        console.log('All scripts loaded, starting app...');
-                    }
-                };
-                document.body.appendChild(script);
-            });
-        }).catch(error => {
-            console.error('Failed to load Supabase:', error);
-            document.querySelector('#loading-screen p').textContent = 'Failed to load. Please refresh the page.';
-        });
+        const GAME_CONFIG = {
+            pointsPerLevel: {
+                perfect: 100,
+                good: 75,
+                okay: 50,
+                minimum: 25
+            },
+            hintCost: 10,
+            revealCost: 15,
+            unlockRequirement: {
+                easy: 0,
+                medium: 5,
+                hard: 5
+            },
+            levelsPerDifficulty: 10
+        };
     </script>
+    <script src="js/auth.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
