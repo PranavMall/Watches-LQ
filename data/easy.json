@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "name": "ROLEX",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/rolex-0d36f5efd88b1d9592b7326acf018830.png",
+    "hints": ["Swiss luxury watchmaker", "Crown logo", "Submariner and Daytona models"],
+    "founded": "1905",
+    "description": "World's most recognized luxury watch brand known for precision and prestige."
+  },
+  {
+    "id": 2,
+    "name": "TUDOR",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/tudor-88d373cf4079f77b61e3eca38aa0a3fe.png",
+    "hints": ["Rolex sister brand", "Shield logo", "Black Bay collection"],
+    "founded": "1946",
+    "description": "Hans Wilsdorf's vision for an affordable luxury watch with Rolex heritage."
+  },
+  {
+    "id": 3,
+    "name": "BREITLING",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/beritling-444d325a3f310076dbe1c1a8e864babf.png",
+    "hints": ["Aviation watches", "Navitimer model", "Swiss chronograph specialists"],
+    "founded": "1884",
+    "description": "Legendary aviation watch brand known for precision chronographs."
+  },
+  {
+    "id": 4,
+    "name": "HUBLOT",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/hublot-7c3a16a86afad59780e4e48168fca4ac.png",
+    "hints": ["Art of Fusion", "Big Bang collection", "Rubber straps luxury"],
+    "founded": "1980",
+    "description": "Modern luxury brand famous for innovative materials and bold designs."
+  },
+  {
+    "id": 5,
+    "name": "ORIS",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/oris-8903c65f927b5002680bbe3a07a8b26d.png",
+    "hints": ["Swiss independent", "Big Crown collection", "Diving watches"],
+    "founded": "1904",
+    "description": "Independent Swiss watch company known for mechanical timepieces."
+  },
+  {
+    "id": 6,
+    "name": "CHANEL",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/chennel-black-642a9e21e1b892040b690938d7b2f604.png",
+    "hints": ["French luxury fashion", "J12 collection", "Ceramic watches"],
+    "founded": "1910",
+    "description": "French fashion house creating elegant and sophisticated timepieces."
+  },
+  {
+    "id": 7,
+    "name": "CHOPARD",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/chopard-777a5f84cdc9f8fefea2c031c7625eb9.png",
+    "hints": ["Happy Diamonds", "Mille Miglia racing", "Swiss luxury jeweler"],
+    "founded": "1860",
+    "description": "Swiss luxury brand combining fine watchmaking with high jewelry expertise."
+  },
+  {
+    "id": 8,
+    "name": "ULYSSE NARDIN",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/ulysse-nardin-ca3537466b3e4b4a9af5c8a7f3668939.png",
+    "hints": ["Marine chronometers", "Executive collection", "Silicon technology"],
+    "founded": "1846",
+    "description": "Swiss manufacturer known for marine chronometers and innovative complications."
+  },
+  {
+    "id": 9,
+    "name": "LOUIS ERARD",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/louis-50cea268578ecdd8b472e0e43dc63431.png",
+    "hints": ["Swiss tradition", "Regulator watches", "Accessible luxury"],
+    "founded": "1931",
+    "description": "Swiss brand offering traditional watchmaking at accessible prices."
+  },
+  {
+    "id": 10,
+    "name": "NORQAIN",
+    "image": "https://www.dubaiwatchweek.com/application/files/cache/thumbnails/transparent-background-with-white-logo-6-a5ed141c0271a7f50833cec0c27b2382.png",
+    "hints": ["Young Swiss brand", "Adventure collection", "Neverest series"],
+    "founded": "2018",
+    "description": "New Swiss brand focused on adventure and sports timepieces."
+  }
+]
