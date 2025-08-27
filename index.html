@@ -33,12 +33,6 @@
             <div class="auth-section">
                 <div id="guest-section">
                     <button id="play-as-guest" class="btn btn-primary">Play as Guest</button>
-                    
-                    <div id="guest-name-input" class="guest-name-input">
-                        <input type="text" id="guest-name" placeholder="Enter your name" maxlength="20" required>
-                        <button id="start-guest-game" class="btn btn-primary">Start Playing</button>
-                    </div>
-                    
                     <button id="show-login" class="btn btn-secondary">Login / Register</button>
                 </div>
                 
@@ -55,7 +49,7 @@
                         <h3>Create Account</h3>
                         <input type="text" id="register-name" placeholder="Display Name" required>
                         <input type="email" id="register-email" placeholder="Email" required>
-                        <input type="password" id="register-password" placeholder="Password" required>
+                        <input type="password" id="register-password" placeholder="Password (min 6 characters)" required>
                         <button id="register-btn" class="btn btn-primary">Register</button>
                         <p>Already have an account? <a href="#" id="show-login-link">Login here</a></p>
                     </div>
@@ -74,7 +68,7 @@
                 <h2>Select Difficulty</h2>
                 <div class="user-info">
                     <span id="user-name">Guest</span>
-                    <span id="total-score">0 pts</span>
+                    <span id="total-score">100 pts</span>
                 </div>
             </header>
             
@@ -95,7 +89,7 @@
                     <p>Boutique and heritage brands</p>
                     <div class="progress-info">
                         <span class="completed">0/10</span>
-                        <div class="status">Complete 5 Easy levels</div>
+                        <div class="status">Complete 2 Easy levels to unlock</div>
                     </div>
                 </div>
                 
@@ -105,7 +99,7 @@
                     <p>Independent and niche brands</p>
                     <div class="progress-info">
                         <span class="completed">0/10</span>
-                        <div class="status">Complete 5 Medium levels</div>
+                        <div class="status">Complete 2 Medium levels to unlock</div>
                     </div>
                 </div>
             </div>
@@ -128,46 +122,41 @@
     <!-- Game Screen -->
     <div id="game-screen" class="screen">
         <div class="container">
-            <header class="game-header">
-                <button id="back-to-levels" class="btn btn-text">← Back</button>
-                <div class="level-info">
-                    <span id="current-level">Easy 1/10</span>
-                    <span id="current-score">0 pts</span>
+            <div class="game-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Level:</span>
+                    <span class="stat-value" id="current-level">Easy 1/10</span>
                 </div>
-            </header>
+                <div class="stat-item">
+                    <span class="stat-label">Time:</span>
+                    <span class="stat-value timer" id="timer">0:00</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Score:</span>
+                    <span class="stat-value" id="current-score">100</span>
+                </div>
+                <div class="stat-item">
+                    <div class="strikes">
+                        <span class="strike" id="strike-1"></span>
+                        <span class="strike" id="strike-2"></span>
+                        <span class="strike" id="strike-3"></span>
+                    </div>
+                </div>
+                <button id="back-to-levels" class="btn btn-text btn-small">← Back</button>
+            </div>
             
             <div class="game-content">
-                <!-- Game Stats Bar -->
-                <div class="game-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Timer</span>
-                        <span class="stat-value timer" id="timer">0:00</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Score</span>
-                        <span class="stat-value" id="level-score-display">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Strikes</span>
-                        <div class="strikes">
-                            <span class="strike" id="strike-1"></span>
-                            <span class="strike" id="strike-2"></span>
-                            <span class="strike" id="strike-3"></span>
-                        </div>
-                    </div>
-                </div>
-                
                 <div class="logo-container">
                     <img id="brand-logo" src="" alt="Brand Logo" class="brand-image">
                 </div>
                 
-                <div class="word-display" id="word-display"></div>
+                <div class="word-display" id="word-display">_____</div>
                 
                 <div class="letters-container" id="letters-container"></div>
                 
                 <div class="game-actions">
                     <button id="hint-btn" class="btn btn-secondary">💡 Hint (-10 pts)</button>
-                    <button id="reveal-btn" class="btn btn-secondary">👁️ Reveal Letter (-15 pts)</button>
+                    <button id="reveal-btn" class="btn btn-secondary">👁️ Reveal (-15 pts)</button>
                 </div>
                 
                 <div class="hint-display" id="hint-display"></div>
@@ -187,7 +176,7 @@
                 <div class="completion-stats">
                     <div class="stat">
                         <span class="label">Score</span>
-                        <span class="value" id="final-level-score">100 pts</span>
+                        <span class="value" id="level-score">100 pts</span>
                     </div>
                     <div class="stat">
                         <span class="label">Time</span>
@@ -195,18 +184,12 @@
                     </div>
                     <div class="stat">
                         <span class="label">Attempts</span>
-                        <span class="value" id="final-attempts">5</span>
+                        <span class="value" id="level-attempts">5</span>
                     </div>
                     <div class="stat">
                         <span class="label">Founded</span>
                         <span class="value" id="brand-founded">1905</span>
                     </div>
-                </div>
-                
-                <!-- Achievements -->
-                <div id="achievements" class="achievements hidden">
-                    <h3>Achievements Unlocked!</h3>
-                    <div class="achievement-list" id="achievement-list"></div>
                 </div>
                 
                 <div class="brand-info">
@@ -221,55 +204,24 @@
         </div>
     </div>
 
-    <!-- Game Over Screen -->
-    <div id="game-over-screen" class="screen">
-        <div class="container">
-            <div class="completion-content">
-                <h2>Game Over!</h2>
-                <p>You've run out of strikes!</p>
-                
-                <div class="logo-reveal">
-                    <img id="gameover-logo" src="" alt="Brand Logo" class="brand-image">
-                    <h3>The answer was:</h3>
-                    <h2 id="gameover-brand-name">ROLEX</h2>
-                </div>
-                
-                <div class="completion-actions">
-                    <button id="retry-level-btn" class="btn btn-primary">Try Again</button>
-                    <button id="back-to-levels-gameover" class="btn btn-secondary">Level Select</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        // Configuration
-        const SUPABASE_CONFIG = {
-            url: 'https://xttecjpmfzisjhhlukfl.supabase.co',
-            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGVjanBtZnppc2poaGx1a2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxODU1ODksImV4cCI6MjA3MTc2MTU4OX0.UaKYYSeWj6nkxO2EU73Eoa2zlaYdSX6CGQGyQ_33edE'
-        };
-
-        const GAME_CONFIG = {
-            pointsPerLevel: {
-                perfect: 100,
-                good: 75,
-                okay: 50,
-                minimum: 25
-            },
-            hintCost: 10,
-            revealCost: 15,
-            unlockRequirement: {
-                easy: 0,
-                medium: 5,
-                hard: 5
-            },
-            levelsPerDifficulty: 10
-        };
-    </script>
+    <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/game.js"></script>
     <script src="js/app.js"></script>
+    
+    <!-- Timer update listener -->
+    <script>
+        window.addEventListener('timer-update', (e) => {
+            const time = e.detail.time;
+            const minutes = Math.floor(time / 60);
+            const seconds = time % 60;
+            const timerEl = document.getElementById('timer');
+            if (timerEl) {
+                timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        });
+    </script>
 </body>
 </html>
