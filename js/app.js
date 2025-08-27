@@ -204,6 +204,8 @@ class App {
     if (nextLevelBtn) {
       nextLevelBtn.addEventListener('click', () => this.handleNextLevel());
     }
+    // Add game over listeners
+  this.setupGameOverListeners();
   }
 
   showScreen(screenId) {
@@ -369,39 +371,48 @@ class App {
     this.updateGameScreen();
   }
 
-  updateGameScreen() {
-    const brand = this.gameManager.getCurrentBrand();
-    if (!brand) {
-      this.showError('No brand data available');
-      return;
-    }
-
-    const levelInfo = this.gameManager.getCurrentLevelInfo();
-
-    // Update header
-    document.getElementById('current-level').textContent = 
-      `${levelInfo.difficulty.charAt(0).toUpperCase() + levelInfo.difficulty.slice(1)} ${levelInfo.level}/${levelInfo.total}`;
-    document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
-
-    // Update logo
-    const logoElement = document.getElementById('brand-logo');
-    if (logoElement) {
-      logoElement.src = brand.image;
-      logoElement.alt = 'Guess the brand';
-    }
-
-    // Update word display
-    document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
-
-    // Generate and display letter buttons
-    this.updateLetterButtons();
-
-    // Clear hint display
-    document.getElementById('hint-display').textContent = '';
-    
-    // Update hint and reveal button visibility based on score
-    this.updateActionButtons();
+// Update the showGameScreen method to reset strikes display
+updateGameScreen() {
+  const brand = this.gameManager.getCurrentBrand();
+  if (!brand) {
+    this.showError('No brand data available');
+    return;
   }
+
+  const levelInfo = this.gameManager.getCurrentLevelInfo();
+
+  // Update header
+  document.getElementById('current-level').textContent = 
+    `${levelInfo.difficulty.charAt(0).toUpperCase() + levelInfo.difficulty.slice(1)} ${levelInfo.level}/${levelInfo.total}`;
+  document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
+
+  // Update logo
+  const logoElement = document.getElementById('brand-logo');
+  if (logoElement) {
+    logoElement.src = brand.image;
+    logoElement.alt = 'Guess the brand';
+  }
+
+  // Update word display
+  document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
+
+  // Generate and display letter buttons
+  this.updateLetterButtons();
+
+  // Clear hint display
+  document.getElementById('hint-display').textContent = '';
+  
+  // Reset strikes display
+  for (let i = 1; i <= 3; i++) {
+    const strikeEl = document.getElementById(`strike-${i}`);
+    if (strikeEl) {
+      strikeEl.classList.remove('active');
+    }
+  }
+  
+  // Update hint and reveal button visibility based on score
+  this.updateActionButtons();
+}
   
   updateActionButtons() {
     const hintBtn = document.getElementById('hint-btn');
@@ -453,32 +464,124 @@ class App {
     });
   }
 
-  handleLetterGuess(letter, button) {
-    const result = this.gameManager.makeGuess(letter);
+handleLetterGuess(letter, button) {
+  const result = this.gameManager.makeGuess(letter);
 
-    if (!result.success) {
-      this.showError(result.message);
-      return;
-    }
-
-    // Update button state
-    button.disabled = true;
-    
-    if (result.correct) {
-      button.classList.add('correct');
-      // Update word display
-      document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
-      
-      // Update action buttons visibility after each guess
-      this.updateActionButtons();
-      
-      if (result.complete) {
-        this.handleLevelComplete();
-      }
-    } else {
-      button.style.opacity = '0.3';
-    }
+  if (!result.success) {
+    this.showError(result.message);
+    return;
   }
+
+  // Update button state
+  button.disabled = true;
+  
+  if (result.correct) {
+    button.classList.add('correct');
+    // Update word display
+    document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
+    
+    // Update action buttons visibility after each guess
+    this.updateActionButtons();
+    
+    if (result.complete) {
+      this.handleLevelComplete();
+    }
+  } else {
+    // Wrong guess
+    button.style.opacity = '0.3';
+    button.style.background = '#ffebee';
+    
+    // Show strike feedback
+    this.showStrikeFeedback(result.strikes, result.strikesLeft);
+    
+    // Check if game over
+    if (result.gameOver) {
+      // Disable all remaining buttons
+      document.querySelectorAll('.letter-btn:not(:disabled)').forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.2';
+      });
+      
+      // Show game over after a short delay
+      setTimeout(() => {
+        this.showGameOver(result);
+      }, 1500);
+    } else {
+      // Show warning if on last strike
+      if (result.strikesLeft === 1) {
+        this.showError(`⚠️ Careful! Only 1 strike left! (-${result.penalty} pts)`);
+      } else {
+        this.showError(`Wrong! ${result.strikesLeft} strikes left. (-${result.penalty} pts)`);
+      }
+    }
+    
+    // Update score display
+    document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
+  }
+}
+
+// Show strike feedback animation
+showStrikeFeedback(strikes, strikesLeft) {
+  const strikeEl = document.getElementById(`strike-${strikes}`);
+  if (strikeEl) {
+    strikeEl.classList.add('active');
+    strikeEl.style.animation = 'pulse 0.5s';
+    setTimeout(() => {
+      strikeEl.style.animation = '';
+    }, 500);
+  }
+}
+
+// Show game over screen
+showGameOver(result) {
+  const brand = this.gameManager.getCurrentBrand();
+  const levelInfo = this.gameManager.getCurrentLevelInfo();
+  
+  // Update game over screen
+  document.getElementById('gameover-logo').src = brand.image;
+  document.getElementById('gameover-brand-name').textContent = result.answer;
+  document.getElementById('penalty-amount').textContent = result.totalPenalty;
+  document.getElementById('retries-left').textContent = levelInfo.retriesLeft;
+  
+  // Update retry button based on retries left
+  const retryBtn = document.getElementById('retry-level-btn');
+  if (levelInfo.retriesLeft > 0) {
+    retryBtn.style.display = 'inline-block';
+    retryBtn.innerHTML = `🔄 Retry (-${Math.floor(25 * 0.5)} pts)`;
+  } else {
+    retryBtn.style.display = 'none';
+  }
+  
+  this.showScreen('game-over');
+}
+  setupGameOverListeners() {
+  // Retry button
+  document.getElementById('retry-level-btn').addEventListener('click', () => {
+    const result = this.gameManager.retryLevel();
+    
+    if (result.success) {
+      this.showMessage(result.message);
+      this.showGameScreen();
+    } else {
+      this.showError(result.message);
+    }
+  });
+    // Skip button
+  document.getElementById('skip-level-btn').addEventListener('click', () => {
+    const result = this.gameManager.skipLevel();
+    
+    if (result.success) {
+      this.showMessage(result.message);
+      // Move to next level
+      this.handleNextLevel();
+    }
+  });
+  
+  // Back to levels
+  document.getElementById('back-to-levels-gameover').addEventListener('click', () => {
+    this.showLevelSelect();
+  });
+}
 
   async handleLevelComplete() {
     const stats = await this.gameManager.completeLevel();
