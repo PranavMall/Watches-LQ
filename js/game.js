@@ -1,3 +1,4 @@
+// js/game.js - Fixed Game Manager with Proper Mechanics
 class GameManager {
   constructor(authManager) {
     this.authManager = authManager;
@@ -9,9 +10,9 @@ class GameManager {
       hard: this.getDefaultHardData() 
     };
     this.userProgress = {
-      easy: { completed: 0, scores: [] },
-      medium: { completed: 0, scores: [] },
-      hard: { completed: 0, scores: [] }
+      easy: { completed: 0, scores: [], failed: [] },
+      medium: { completed: 0, scores: [], failed: [] },
+      hard: { completed: 0, scores: [], failed: [] }
     };
     
     // Game state
@@ -27,21 +28,20 @@ class GameManager {
     this.levelScore = 0;
     this.totalScore = 100; // Starting score
     
-    // New mechanics
+    // Strike system
     this.strikes = 0;
     this.maxStrikes = 3;
-    this.consecutiveCorrect = 0;
+    this.strikesPenalty = 5; // Points lost per strike
+    
+    // Retry tracking
+    this.retryCount = 0;
+    this.maxRetries = 2;
+    this.retryPenalty = 0.5; // 50% score reduction per retry
+    
+    // Timer
     this.timeStarted = null;
     this.timeTaken = 0;
     this.timerInterval = null;
-    
-    // Achievements
-    this.achievements = {
-      speedDemon: false,  // Complete in under 30 seconds
-      perfectionist: false, // No wrong guesses
-      hintless: false,     // Complete without hints
-      streakMaster: false  // 5 consecutive correct
-    };
   }
 
   async loadGameData() {
@@ -91,7 +91,6 @@ class GameManager {
   async loadUserProgress() {
     const user = this.authManager.getCurrentUser();
     
-    // Try to load from Supabase if available
     if (user && !this.authManager.isGuestUser() && window.supabaseClient) {
       try {
         const { data, error } = await window.supabaseClient
@@ -103,7 +102,8 @@ class GameManager {
           data.forEach(record => {
             this.userProgress[record.difficulty] = {
               completed: record.completed_levels || 0,
-              scores: record.level_scores || []
+              scores: record.level_scores || [],
+              failed: record.failed_levels || []
             };
             if (record.total_score) {
               this.totalScore = record.total_score;
@@ -117,17 +117,12 @@ class GameManager {
   }
 
   async saveProgress() {
-    // Save total score
     localStorage.setItem('watches_lq_total_score', this.totalScore.toString());
-    
-    // Save progress
     localStorage.setItem('watches_lq_progress', JSON.stringify(this.userProgress));
     
-    // Save to Supabase if available
     const user = this.authManager.getCurrentUser();
     if (user && window.supabaseClient) {
       try {
-        // Save progress
         for (const [difficulty, progress] of Object.entries(this.userProgress)) {
           await window.supabaseClient
             .from('user_progress')
@@ -137,13 +132,13 @@ class GameManager {
                 difficulty: difficulty,
                 completed_levels: progress.completed,
                 level_scores: progress.scores,
+                failed_levels: progress.failed || [],
                 total_score: this.totalScore,
                 updated_at: new Date().toISOString()
               }
             ], { onConflict: 'user_id,difficulty' });
         }
         
-        // Save to leaderboard
         await this.updateLeaderboard();
       } catch (error) {
         console.warn('Failed to save progress to server:', error);
@@ -174,41 +169,6 @@ class GameManager {
     }
   }
 
-  async getLeaderboard(timeframe = 'all') {
-    if (!window.supabaseClient) {
-      // Return local leaderboard from localStorage
-      const localLeaderboard = JSON.parse(localStorage.getItem('watches_lq_leaderboard') || '[]');
-      return localLeaderboard;
-    }
-    
-    try {
-      let query = window.supabaseClient
-        .from('leaderboard')
-        .select('*')
-        .order('total_score', { ascending: false })
-        .limit(10);
-      
-      // Add time filter
-      if (timeframe === 'daily') {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        query = query.gte('updated_at', today.toISOString());
-      } else if (timeframe === 'weekly') {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        query = query.gte('updated_at', weekAgo.toISOString());
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.warn('Failed to get leaderboard:', error);
-      return [];
-    }
-  }
-
   getTotalLevelsCompleted() {
     let total = 0;
     Object.values(this.userProgress).forEach(progress => {
@@ -218,7 +178,7 @@ class GameManager {
   }
 
   getDifficultyProgress(difficulty) {
-    return this.userProgress[difficulty] || { completed: 0, scores: [] };
+    return this.userProgress[difficulty] || { completed: 0, scores: [], failed: [] };
   }
 
   isDifficultyUnlocked(difficulty) {
@@ -268,7 +228,6 @@ class GameManager {
     this.wrongGuesses = [];
     this.attempts = 0;
     this.strikes = 0;
-    this.consecutiveCorrect = 0;
     this.hintsUsed = 0;
     this.revealsUsed = 0;
     this.currentScore = 0;
@@ -277,13 +236,63 @@ class GameManager {
     // Start timer
     this.startTimer();
     
-    // Reset achievements
-    Object.keys(this.achievements).forEach(key => {
-      this.achievements[key] = false;
-    });
-
     console.log('Level started with brand:', this.currentBrand.name);
     return true;
+  }
+
+  retryLevel() {
+    // Check if retry is allowed
+    if (this.retryCount >= this.maxRetries) {
+      return { 
+        success: false, 
+        message: 'No more retries available for this level' 
+      };
+    }
+    
+    // Apply retry penalty to total score
+    const penalty = Math.floor(25 * this.retryPenalty);
+    this.totalScore = Math.max(0, this.totalScore - penalty);
+    this.retryCount++;
+    
+    // Reset for retry
+    this.guessedLetters = [];
+    this.correctGuesses = [];
+    this.wrongGuesses = [];
+    this.attempts = 0;
+    this.strikes = 0;
+    this.hintsUsed = 0;
+    this.revealsUsed = 0;
+    this.levelScore = -penalty; // Track negative score for this attempt
+    
+    // Restart timer
+    this.startTimer();
+    
+    return { 
+      success: true, 
+      penalty, 
+      retriesLeft: this.maxRetries - this.retryCount,
+      message: `Retry penalty: -${penalty} points. ${this.maxRetries - this.retryCount} retries left.`
+    };
+  }
+
+  skipLevel() {
+    // Skip penalty
+    const skipPenalty = 30;
+    this.totalScore = Math.max(0, this.totalScore - skipPenalty);
+    
+    // Mark level as failed
+    const progress = this.getDifficultyProgress(this.currentDifficulty);
+    if (!progress.failed) progress.failed = [];
+    progress.failed.push(this.currentLevel);
+    
+    // Save progress
+    this.saveProgress();
+    
+    return {
+      success: true,
+      penalty: skipPenalty,
+      message: `Level skipped. -${skipPenalty} points penalty.`
+    };
   }
 
   startTimer() {
@@ -338,6 +347,11 @@ class GameManager {
       return { success: false, message: 'Letter already guessed' };
     }
 
+    // Check if game is already over
+    if (this.strikes >= this.maxStrikes) {
+      return { success: false, message: 'Game over - too many strikes!' };
+    }
+
     this.guessedLetters.push(letter);
     this.attempts++;
 
@@ -345,12 +359,6 @@ class GameManager {
     
     if (isCorrect) {
       this.correctGuesses.push(letter);
-      this.consecutiveCorrect++;
-      
-      // Check for streak achievement
-      if (this.consecutiveCorrect >= 5) {
-        this.achievements.streakMaster = true;
-      }
       
       // Check if word is complete
       const wordComplete = this.currentWord
@@ -360,28 +368,48 @@ class GameManager {
       if (wordComplete) {
         this.stopTimer();
         this.calculateScore();
-        return { success: true, correct: true, complete: true };
+        return { 
+          success: true, 
+          correct: true, 
+          complete: true,
+          score: this.currentScore 
+        };
       }
       
-      return { success: true, correct: true, complete: false };
+      return { 
+        success: true, 
+        correct: true, 
+        complete: false 
+      };
     } else {
-      // Wrong guess
+      // Wrong guess - apply strike and penalty
       this.wrongGuesses.push(letter);
-      this.consecutiveCorrect = 0;
       this.strikes++;
       
-      // Negative scoring for wrong guesses
-      this.totalScore = Math.max(0, this.totalScore - 5);
-      this.levelScore -= 5;
+      // Immediate penalty for wrong guess
+      const strikePenalty = this.strikesPenalty;
+      this.totalScore = Math.max(0, this.totalScore - strikePenalty);
+      this.levelScore -= strikePenalty;
       
-      // Check if game over
+      // Update strike display
+      this.updateStrikeDisplay();
+      
+      // Check if game over (3 strikes)
       if (this.strikes >= this.maxStrikes) {
         this.stopTimer();
+        
+        // Additional penalty for failing the level
+        const failPenalty = 20;
+        this.totalScore = Math.max(0, this.totalScore - failPenalty);
+        
         return { 
           success: true, 
           correct: false, 
           complete: false, 
-          gameOver: true 
+          gameOver: true,
+          strikes: this.strikes,
+          totalPenalty: (this.strikes * strikePenalty) + failPenalty,
+          answer: this.currentWord
         };
       }
       
@@ -389,8 +417,24 @@ class GameManager {
         success: true, 
         correct: false, 
         complete: false,
-        strikes: this.strikes 
+        strikes: this.strikes,
+        strikesLeft: this.maxStrikes - this.strikes,
+        penalty: strikePenalty
       };
+    }
+  }
+
+  updateStrikeDisplay() {
+    // Update strike indicators
+    for (let i = 1; i <= this.maxStrikes; i++) {
+      const strikeEl = document.getElementById(`strike-${i}`);
+      if (strikeEl) {
+        if (i <= this.strikes) {
+          strikeEl.classList.add('active');
+        } else {
+          strikeEl.classList.remove('active');
+        }
+      }
     }
   }
 
@@ -470,27 +514,24 @@ class GameManager {
     // Base score calculation
     if (this.attempts === wordLength) {
       baseScore = GAME_CONFIG.pointsPerLevel.perfect;
-      this.achievements.perfectionist = true;
     } else if (this.attempts <= wordLength + 2) {
       baseScore = GAME_CONFIG.pointsPerLevel.good;
     } else if (this.attempts <= wordLength + 3) {
       baseScore = GAME_CONFIG.pointsPerLevel.okay;
     }
     
-    // Time bonus
+    // Time bonus/penalty
     if (this.timeTaken < 30) {
-      baseScore += 20;
-      this.achievements.speedDemon = true;
+      baseScore += 20; // Quick solve bonus
     } else if (this.timeTaken < 60) {
       baseScore += 10;
     } else if (this.timeTaken > 120) {
       baseScore -= Math.min(20, Math.floor((this.timeTaken - 120) / 10) * 2);
     }
     
-    // No hints bonus
-    if (this.hintsUsed === 0) {
-      baseScore += 10;
-      this.achievements.hintless = true;
+    // Apply retry penalty if this was a retry
+    if (this.retryCount > 0) {
+      baseScore = Math.floor(baseScore * Math.pow(1 - this.retryPenalty, this.retryCount));
     }
     
     // Difficulty multiplier
@@ -501,10 +542,10 @@ class GameManager {
     };
     baseScore = Math.floor(baseScore * (difficultyMultiplier[this.currentDifficulty] || 1));
     
-    // Final score
-    this.levelScore += baseScore;
-    this.currentScore = baseScore;
-    this.totalScore += baseScore;
+    // Final score (don't let it go below 0)
+    this.currentScore = Math.max(0, baseScore);
+    this.levelScore += this.currentScore;
+    this.totalScore += this.currentScore;
   }
 
   canUseHint() {
@@ -533,6 +574,9 @@ class GameManager {
       progress.scores[this.currentLevel] = this.currentScore;
     }
     
+    // Reset retry count for next level
+    this.retryCount = 0;
+    
     // Save progress
     await this.saveProgress();
     
@@ -544,8 +588,7 @@ class GameManager {
       revealsUsed: this.revealsUsed,
       strikes: this.strikes,
       timeTaken: this.timeTaken,
-      totalScore: this.totalScore,
-      achievements: this.achievements
+      totalScore: this.totalScore
     };
   }
 
@@ -569,11 +612,12 @@ class GameManager {
     return {
       difficulty: this.currentDifficulty,
       level: this.currentLevel + 1,
-      total: this.gameData[this.currentDifficulty]?.length || 10
+      total: this.gameData[this.currentDifficulty]?.length || 10,
+      retriesLeft: this.maxRetries - this.retryCount
     };
   }
 
-  // Default data methods (same as before)
+  // Default data methods
   getDefaultEasyData() {
     return [
       {
