@@ -208,13 +208,13 @@
     <div id="game-over-screen" class="screen">
         <div class="container">
             <div class="completion-content">
-                <h2 style="color: #f44336; margin-bottom: 1rem;">⚠️ Game Over!</h2>
-                <p style="margin-bottom: 1.5rem;">You've run out of strikes!</p>
+                <h2 style="color: #f44336; margin-bottom: 1rem;">⚠️ Out of Strikes!</h2>
+                <p style="margin-bottom: 1.5rem;">Choose an option to continue:</p>
                 
-                <div class="logo-reveal">
+                <div class="logo-reveal" style="display: none;">
                     <img id="gameover-logo" src="" alt="Brand Logo" class="brand-image">
                     <p style="color: #666; margin: 0.5rem 0;">The answer was:</p>
-                    <h2 id="gameover-brand-name" style="color: var(--primary);">BRAND</h2>
+                    <h2 id="gameover-brand-name" style="color: var(--primary-color);">BRAND</h2>
                 </div>
                 
                 <div class="penalty-info" style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
@@ -236,6 +236,12 @@
                     <button id="back-to-levels-gameover" class="btn btn-text">
                         ← Back to Levels
                     </button>
+                </div>
+                
+                <!-- Future Ad Integration Placeholder -->
+                <div class="ad-options" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 0.5rem;">No points? Watch an ad:</p>
+                    <button class="btn btn-secondary" disabled>📺 Coming Soon</button>
                 </div>
             </div>
         </div>
