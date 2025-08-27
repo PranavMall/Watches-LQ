@@ -204,6 +204,43 @@
         </div>
     </div>
 
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="screen">
+        <div class="container">
+            <div class="completion-content">
+                <h2 style="color: #f44336; margin-bottom: 1rem;">⚠️ Game Over!</h2>
+                <p style="margin-bottom: 1.5rem;">You've run out of strikes!</p>
+                
+                <div class="logo-reveal">
+                    <img id="gameover-logo" src="" alt="Brand Logo" class="brand-image">
+                    <p style="color: #666; margin: 0.5rem 0;">The answer was:</p>
+                    <h2 id="gameover-brand-name" style="color: var(--primary);">BRAND</h2>
+                </div>
+                
+                <div class="penalty-info" style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+                    <p style="color: #856404; margin: 0;">
+                        <strong>Penalty Applied:</strong> -<span id="penalty-amount">25</span> points
+                    </p>
+                    <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+                        Retries left: <span id="retries-left">2</span>
+                    </p>
+                </div>
+                
+                <div class="completion-actions">
+                    <button id="retry-level-btn" class="btn btn-primary">
+                        🔄 Retry (-25 pts)
+                    </button>
+                    <button id="skip-level-btn" class="btn btn-secondary">
+                        ⏭️ Skip Level (-30 pts)
+                    </button>
+                    <button id="back-to-levels-gameover" class="btn btn-text">
+                        ← Back to Levels
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
