@@ -64,15 +64,13 @@
     <div id="level-select-screen" class="screen">
         <div class="container">
             <header class="game-header">
-                <div class="user-info">
-                    <span id="user-name">Guest</span>
-                    <span id="total-score">100 pts</span>
-                    </div>
-                <h2>Select Difficulty</h2>
-                <div class="header-actions">
-        <button id="logout-btn" class="btn btn-text">← Back</button>
-        </div>
-            </header>
+    <div class="user-info">
+        <span id="user-name">Guest</span>
+        <span id="total-score">185 pts</span>
+    </div>
+    <h2>Select Difficulty</h2>
+    <button id="logout-btn" class="btn btn-text">← Back</button>
+</header>
             
             <div class="difficulty-levels">
                 <div class="difficulty-card" data-level="easy">
@@ -125,28 +123,30 @@
     <div id="game-screen" class="screen">
         <div class="container">
             <div class="game-stats">
-    <div class="stats-top">
+    <div class="row">
         <div class="stat-item">
-            <span class="stat-label">Level</span>
+            <span class="stat-label">Level:</span>
             <span class="stat-value" id="current-level">Easy 1/10</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Time</span>
+            <span class="stat-label">Time:</span>
             <span class="stat-value timer" id="timer">0:00</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Score</span>
+            <span class="stat-label">Score:</span>
             <span class="stat-value" id="current-score">100 pts</span>
         </div>
     </div>
-    
-    <img class="dww-logo" src="https://dww-v9.1020dev.com/application/files/1216/3203/9654/dww-author.jpg" alt="DWW">
-    
-    <div class="strikes-row">
-        <div class="strikes">
-            <span class="strike" id="strike-1"></span>
-            <span class="strike" id="strike-2"></span>
-            <span class="strike" id="strike-3"></span>
+    <div class="row">
+        <img class="dww-logo" src="https://dww-v9.1020dev.com/application/files/1216/3203/9654/dww-author.jpg" alt="DWW">
+    </div>
+    <div class="row">
+        <div class="stat-item" style="display: flex; justify-content: center;">
+            <div class="strikes">
+                <span class="strike" id="strike-1"></span>
+                <span class="strike" id="strike-2"></span>
+                <span class="strike" id="strike-3"></span>
+            </div>
         </div>
         <button id="back-to-levels" class="btn btn-text btn-small">← Back</button>
     </div>
