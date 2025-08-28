@@ -1,4 +1,4 @@
-/* css/style.css - Dubai Watch Week Theme */
+/* css/style.css - Dubai Watch Week Theme - Complete Version */
 :root {
   --primary-color: #622744;
   --primary-dark: #4a1d34;
@@ -37,7 +37,7 @@ body {
   color: var(--text-primary);
 }
 
-/* Screen Management - FIXED */
+/* Screen Management */
 .screen {
   display: none;
   position: absolute;
@@ -116,7 +116,7 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* Start Screen - FIXED centering */
+/* Start Screen */
 #start-screen .container {
   display: flex;
   flex-direction: column;
@@ -203,6 +203,12 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+.btn-primary:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-secondary {
   background: transparent;
   color: var(--primary-color);
@@ -212,6 +218,11 @@ body {
 .btn-secondary:hover {
   background: var(--primary-color);
   color: white;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-text {
@@ -232,37 +243,47 @@ body {
   font-size: 0.9rem;
 }
 
-/* Game Header */
+/* IMPROVED Game Header */
 .game-header {
   background: var(--surface);
   padding: 1rem;
   border-radius: var(--border-radius);
   margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
   align-items: center;
   box-shadow: var(--shadow-sm);
 }
 
+.game-header .user-info {
+  text-align: left;
+}
+
+.game-header .user-info #user-name {
+  display: block;
+  font-weight: 600;
+  color: var(--primary-color);
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.game-header .user-info #total-score {
+  display: block;
+  color: var(--accent-gold);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 .game-header h2 {
+  text-align: center;
   color: var(--primary-color);
   font-weight: 400;
   font-size: 1.5rem;
+  margin: 0;
 }
 
-.user-info {
+.game-header .header-actions {
   text-align: right;
-}
-
-.user-info span {
-  display: inline-block;
-  margin: 0 0.5rem;
-  color: var(--text-secondary);
-}
-
-.user-info #total-score {
-  color: var(--primary-color);
-  font-weight: 600;
 }
 
 /* Difficulty Cards */
@@ -328,54 +349,108 @@ body {
   font-size: 0.85rem;
 }
 
-/* Game Screen - FIXED COMPACT STATS */
+/* IMPROVED Game Stats - Compact & Visual */
 .game-stats {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.game-stats .stats-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  background: var(--surface);
-  border-radius: var(--border-radius);
-  margin-bottom: 1rem;
-  box-shadow: var(--shadow-sm);
-  font-size: 14px;
+  margin-bottom: 0.5rem;
 }
 
-.stat-item {
+.game-stats .stat-item {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.stat-label {
-  color: var(--text-secondary);
-  font-size: 12px;
+.game-stats .stat-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 400;
 }
 
-.stat-value {
+.game-stats .stat-value {
   font-weight: 600;
-  color: var(--primary-color);
-  font-size: 14px;
+  color: white;
+  font-size: 0.95rem;
 }
 
-.timer {
-  color: var(--warning);
+.game-stats .stat-value.timer {
+  color: var(--accent-gold);
+  font-family: 'Courier New', monospace;
+}
+
+/* DWW Logo in stats */
+.game-stats .dww-logo {
+  display: block;
+  width: 120px;
+  height: auto;
+  margin: 0.5rem auto;
+  opacity: 0.9;
+  filter: brightness(0) invert(1);
+}
+
+/* Strikes Row */
+.game-stats .strikes-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .strikes {
   display: flex;
-  gap: 4px;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
 }
 
 .strike {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #e0e0e0;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
 .strike.active {
   background: var(--error);
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+  animation: strikeHit 0.5s ease;
+}
+
+@keyframes strikeHit {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.game-stats #back-to-levels {
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.game-stats #back-to-levels:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* Game Content */
@@ -386,7 +461,7 @@ body {
   box-shadow: var(--shadow-md);
 }
 
-/* Logo Container - BIGGER */
+/* Logo Container */
 .logo-container {
   text-align: center;
   margin-bottom: 1.5rem;
@@ -614,9 +689,34 @@ body {
     font-size: 1rem;
   }
   
+  .game-header {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 0.75rem;
+  }
+  
+  .game-header .user-info {
+    text-align: center;
+  }
+  
+  .game-header .header-actions {
+    text-align: center;
+  }
+  
   .game-stats {
-    font-size: 12px;
-    padding: 8px 10px;
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .game-stats .dww-logo {
+    width: 100px;
+  }
+  
+  .game-stats .stat-label {
+    font-size: 0.65rem;
+  }
+  
+  .game-stats .stat-value {
+    font-size: 0.85rem;
   }
   
   .completion-stats {
