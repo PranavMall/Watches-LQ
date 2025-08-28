@@ -64,12 +64,14 @@
     <div id="level-select-screen" class="screen">
         <div class="container">
             <header class="game-header">
-                <button id="logout-btn" class="btn btn-text">← Back</button>
-                <h2>Select Difficulty</h2>
                 <div class="user-info">
                     <span id="user-name">Guest</span>
                     <span id="total-score">100 pts</span>
-                </div>
+                    </div>
+                <h2>Select Difficulty</h2>
+                <div class="header-actions">
+        <button id="logout-btn" class="btn btn-text">← Back</button>
+        </div>
             </header>
             
             <div class="difficulty-levels">
@@ -123,27 +125,32 @@
     <div id="game-screen" class="screen">
         <div class="container">
             <div class="game-stats">
-                <div class="stat-item">
-                    <span class="stat-label">Level:</span>
-                    <span class="stat-value" id="current-level">Easy 1/10</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Time:</span>
-                    <span class="stat-value timer" id="timer">0:00</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Score:</span>
-                    <span class="stat-value" id="current-score">100</span>
-                </div>
-                <div class="stat-item">
-                    <div class="strikes">
-                        <span class="strike" id="strike-1"></span>
-                        <span class="strike" id="strike-2"></span>
-                        <span class="strike" id="strike-3"></span>
-                    </div>
-                </div>
-                <button id="back-to-levels" class="btn btn-text btn-small">← Back</button>
-            </div>
+    <div class="stats-top">
+        <div class="stat-item">
+            <span class="stat-label">Level</span>
+            <span class="stat-value" id="current-level">Easy 1/10</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Time</span>
+            <span class="stat-value timer" id="timer">0:00</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Score</span>
+            <span class="stat-value" id="current-score">100 pts</span>
+        </div>
+    </div>
+    
+    <img class="dww-logo" src="https://dww-v9.1020dev.com/application/files/1216/3203/9654/dww-author.jpg" alt="DWW">
+    
+    <div class="strikes-row">
+        <div class="strikes">
+            <span class="strike" id="strike-1"></span>
+            <span class="strike" id="strike-2"></span>
+            <span class="strike" id="strike-3"></span>
+        </div>
+        <button id="back-to-levels" class="btn btn-text btn-small">← Back</button>
+    </div>
+</div>
             
             <div class="game-content">
                 <div class="logo-container">
