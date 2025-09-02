@@ -178,8 +178,22 @@ class GameManager {
   }
 
   getDifficultyProgress(difficulty) {
-    return this.userProgress[difficulty] || { completed: 0, scores: [], failed: [] };
-  }
+    if (!this.userProgress[difficulty]) {
+        this.userProgress[difficulty] = { 
+            completed: 0, 
+            scores: [], 
+            failed: [],
+            completedLevels: [] 
+        };
+    }
+    
+    // Ensure completedLevels array exists
+    if (!this.userProgress[difficulty].completedLevels) {
+        this.userProgress[difficulty].completedLevels = [];
+    }
+    
+    return this.userProgress[difficulty];
+}
 
   isDifficultyUnlocked(difficulty) {
     if (difficulty === 'easy') return true;
@@ -200,25 +214,38 @@ class GameManager {
     const availableLevels = this.gameData[difficulty] || [];
     
     if (availableLevels.length === 0) {
-      console.error('No levels available for difficulty:', difficulty);
-      return false;
+        console.error('No levels available for difficulty:', difficulty);
+        return false;
     }
     
-    if (levelIndex !== null && availableLevels[levelIndex]) {
-      this.currentBrand = availableLevels[levelIndex];
-      this.currentLevel = levelIndex;
+    // If a specific level index is provided, use it
+    if (levelIndex !== null && levelIndex >= 0 && levelIndex < availableLevels.length) {
+        this.currentBrand = availableLevels[levelIndex];
+        this.currentLevel = levelIndex;
+        console.log('Starting specific level:', levelIndex, this.currentBrand.name);
     } else {
-      const progress = this.getDifficultyProgress(difficulty);
-      const nextLevelIndex = progress.completed < availableLevels.length ? 
-        progress.completed : Math.floor(Math.random() * availableLevels.length);
-      
-      this.currentBrand = availableLevels[nextLevelIndex] || availableLevels[0];
-      this.currentLevel = nextLevelIndex;
+        // Otherwise, find the next uncompleted level
+        const progress = this.getDifficultyProgress(difficulty);
+        let nextLevelIndex = 0;
+        
+        if (progress.completedLevels) {
+            // Find the first uncompleted level
+            for (let i = 0; i < availableLevels.length; i++) {
+                if (!progress.completedLevels.includes(i)) {
+                    nextLevelIndex = i;
+                    break;
+                }
+            }
+        }
+        
+        this.currentBrand = availableLevels[nextLevelIndex];
+        this.currentLevel = nextLevelIndex;
+        console.log('Starting next uncompleted level:', nextLevelIndex, this.currentBrand.name);
     }
 
     if (!this.currentBrand) {
-      console.error('No brand data available for level');
-      return false;
+        console.error('No brand data available for level');
+        return false;
     }
 
     // Reset game state
@@ -236,9 +263,9 @@ class GameManager {
     // Start timer
     this.startTimer();
     
-    console.log('Level started with brand:', this.currentBrand.name);
+    console.log('Level started successfully with brand:', this.currentBrand.name);
     return true;
-  }
+}
 
   retryLevel() {
     // Check if retry is allowed
@@ -566,12 +593,23 @@ class GameManager {
   async completeLevel() {
     const progress = this.getDifficultyProgress(this.currentDifficulty);
     
-    // Update scores array
+    // Store the score for this specific level
+    if (!progress.scores) {
+        progress.scores = [];
+    }
+    
+    // Update the score for this level (use currentLevel as index)
     if (!progress.scores[this.currentLevel] || progress.scores[this.currentLevel] < this.currentScore) {
-      if (!progress.scores[this.currentLevel]) {
-        progress.completed++;
-      }
-      progress.scores[this.currentLevel] = this.currentScore;
+        progress.scores[this.currentLevel] = this.currentScore;
+    }
+    
+    // Mark this specific level as completed
+    if (!progress.completedLevels) {
+        progress.completedLevels = [];
+    }
+    if (!progress.completedLevels.includes(this.currentLevel)) {
+        progress.completedLevels.push(this.currentLevel);
+        progress.completed = progress.completedLevels.length;
     }
     
     // Reset retry count for next level
@@ -581,16 +619,16 @@ class GameManager {
     await this.saveProgress();
     
     return {
-      score: this.currentScore,
-      levelScore: this.levelScore,
-      attempts: this.attempts,
-      hintsUsed: this.hintsUsed,
-      revealsUsed: this.revealsUsed,
-      strikes: this.strikes,
-      timeTaken: this.timeTaken,
-      totalScore: this.totalScore
+        score: this.currentScore,
+        levelScore: this.levelScore,
+        attempts: this.attempts,
+        hintsUsed: this.hintsUsed,
+        revealsUsed: this.revealsUsed,
+        strikes: this.strikes,
+        timeTaken: this.timeTaken,
+        totalScore: this.totalScore
     };
-  }
+}
 
   getDisplayWord() {
     if (!this.currentWord) return '';
