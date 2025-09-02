@@ -598,27 +598,65 @@ showGameOver(result) {
     document.getElementById('level-attempts').textContent = stats.attempts;
     document.getElementById('brand-founded').textContent = brand.founded || 'N/A';
     document.getElementById('brand-description').textContent = 
-      brand.description || 'A prestigious watch manufacturer.';
+        brand.description || 'A prestigious watch manufacturer.';
+    
+    // Update final time if element exists
+    const finalTimeEl = document.getElementById('final-time');
+    if (finalTimeEl) {
+        const minutes = Math.floor(stats.timeTaken / 60);
+        const seconds = stats.timeTaken % 60;
+        finalTimeEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // Check if there are more levels
+    const currentDifficulty = this.gameManager.currentDifficulty;
+    const currentLevel = this.gameManager.currentLevel;
+    const availableLevels = this.gameManager.gameData[currentDifficulty]?.length || 0;
+    
+    // Show/hide next button based on available levels
+    const nextBtn = document.getElementById('next-level-btn');
+    if (nextBtn) {
+        if (currentLevel + 1 < availableLevels) {
+            nextBtn.style.display = 'inline-block';
+            nextBtn.textContent = 'Next Level';
+        } else {
+            nextBtn.style.display = 'inline-block';
+            nextBtn.textContent = 'Complete! Back to Levels';
+        }
+    }
 
     this.showScreen('level-complete');
-  }
+}
 
   handleNextLevel() {
     const currentDifficulty = this.gameManager.currentDifficulty;
     const currentLevel = this.gameManager.currentLevel;
     const availableLevels = this.gameManager.gameData[currentDifficulty]?.length || 0;
 
+    console.log('handleNextLevel:', {
+        currentDifficulty,
+        currentLevel,
+        availableLevels,
+        nextLevel: currentLevel + 1
+    });
+
     if (currentLevel + 1 < availableLevels) {
-      if (this.gameManager.startLevel(currentDifficulty, currentLevel + 1)) {
-        this.showGameScreen();
-      } else {
-        this.showLevelSelect();
-      }
+        // Start the next level
+        const started = this.gameManager.startLevel(currentDifficulty, currentLevel + 1);
+        console.log('Next level started:', started);
+        
+        if (started) {
+            this.showGameScreen();
+        } else {
+            console.error('Failed to start next level');
+            this.showLevelSelect();
+        }
     } else {
-      this.showMessage('Congratulations! You completed all levels in this difficulty.');
-      this.showLevelSelect();
+        // No more levels in this difficulty
+        this.showMessage('Congratulations! You completed all levels in this difficulty.');
+        this.showLevelSelect();
     }
-  }
+}
 
   showLevelSelect() {
     this.showScreen('level-select');
