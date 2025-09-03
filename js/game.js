@@ -1,4 +1,4 @@
-// js/game.js - Fixed Game Manager with Proper Mechanics
+// js/game.js - Fixed Version with Proper Level Tracking
 class GameManager {
   constructor(authManager) {
     this.authManager = authManager;
@@ -10,9 +10,9 @@ class GameManager {
       hard: this.getDefaultHardData() 
     };
     this.userProgress = {
-      easy: { completed: 0, scores: [], failed: [] },
-      medium: { completed: 0, scores: [], failed: [] },
-      hard: { completed: 0, scores: [], failed: [] }
+      easy: { completed: 0, scores: [], failed: [], completedLevels: [] },
+      medium: { completed: 0, scores: [], failed: [], completedLevels: [] },
+      hard: { completed: 0, scores: [], failed: [], completedLevels: [] }
     };
     
     // Game state
@@ -26,17 +26,17 @@ class GameManager {
     this.revealsUsed = 0;
     this.currentScore = 0;
     this.levelScore = 0;
-    this.totalScore = 100; // Starting score
+    this.totalScore = 100;
     
     // Strike system
     this.strikes = 0;
     this.maxStrikes = 3;
-    this.strikesPenalty = 5; // Points lost per strike
+    this.strikesPenalty = 5;
     
     // Retry tracking
     this.retryCount = 0;
     this.maxRetries = 2;
-    this.retryPenalty = 0.5; // 50% score reduction per retry
+    this.retryPenalty = 25; // Fixed penalty amount
     
     // Timer
     this.timeStarted = null;
@@ -47,23 +47,29 @@ class GameManager {
   async loadGameData() {
     console.log('Loading game data...');
     
-    // Load saved total score
     const savedTotalScore = localStorage.getItem('watches_lq_total_score');
     if (savedTotalScore) {
       this.totalScore = parseInt(savedTotalScore) || 100;
     }
     
-    // Load saved progress
     const savedProgress = localStorage.getItem('watches_lq_progress');
     if (savedProgress) {
       try {
-        this.userProgress = JSON.parse(savedProgress);
+        const progress = JSON.parse(savedProgress);
+        // Ensure completedLevels array exists
+        Object.keys(progress).forEach(difficulty => {
+          if (progress[difficulty]) {
+            this.userProgress[difficulty] = {
+              ...progress[difficulty],
+              completedLevels: progress[difficulty].completedLevels || []
+            };
+          }
+        });
       } catch (error) {
         console.warn('Failed to parse saved progress:', error);
       }
     }
     
-    // Try to load from JSON files
     try {
       const difficulties = ['easy', 'medium', 'hard'];
       
@@ -103,7 +109,8 @@ class GameManager {
             this.userProgress[record.difficulty] = {
               completed: record.completed_levels || 0,
               scores: record.level_scores || [],
-              failed: record.failed_levels || []
+              failed: record.failed_levels || [],
+              completedLevels: record.completed_levels_array || []
             };
             if (record.total_score) {
               this.totalScore = record.total_score;
@@ -133,6 +140,7 @@ class GameManager {
                 completed_levels: progress.completed,
                 level_scores: progress.scores,
                 failed_levels: progress.failed || [],
+                completed_levels_array: progress.completedLevels || [],
                 total_score: this.totalScore,
                 updated_at: new Date().toISOString()
               }
@@ -172,35 +180,53 @@ class GameManager {
   getTotalLevelsCompleted() {
     let total = 0;
     Object.values(this.userProgress).forEach(progress => {
-      total += progress.completed || 0;
+      total += (progress.completedLevels || []).length;
     });
     return total;
   }
 
   getDifficultyProgress(difficulty) {
     if (!this.userProgress[difficulty]) {
-        this.userProgress[difficulty] = { 
-            completed: 0, 
-            scores: [], 
-            failed: [],
-            completedLevels: [] 
-        };
+      this.userProgress[difficulty] = { 
+        completed: 0, 
+        scores: [], 
+        failed: [],
+        completedLevels: [] 
+      };
     }
     
-    // Ensure completedLevels array exists
     if (!this.userProgress[difficulty].completedLevels) {
-        this.userProgress[difficulty].completedLevels = [];
+      this.userProgress[difficulty].completedLevels = [];
     }
     
     return this.userProgress[difficulty];
-}
+  }
 
   isDifficultyUnlocked(difficulty) {
     if (difficulty === 'easy') return true;
     
     const requiredDifficulty = difficulty === 'medium' ? 'easy' : 'medium';
     const requiredProgress = this.getDifficultyProgress(requiredDifficulty);
-    return requiredProgress.completed >= GAME_CONFIG.unlockRequirement[difficulty];
+    const completedCount = (requiredProgress.completedLevels || []).length;
+    return completedCount >= (GAME_CONFIG.unlockRequirement[difficulty] || 2);
+  }
+
+  isLevelCompleted(difficulty, levelIndex) {
+    const progress = this.getDifficultyProgress(difficulty);
+    return (progress.completedLevels || []).includes(levelIndex);
+  }
+
+  getNextUncompletedLevel(difficulty) {
+    const availableLevels = this.gameData[difficulty] || [];
+    const progress = this.getDifficultyProgress(difficulty);
+    
+    for (let i = 0; i < availableLevels.length; i++) {
+      if (!progress.completedLevels.includes(i)) {
+        return i;
+      }
+    }
+    
+    return null; // All levels completed
   }
 
   getTotalScore() {
@@ -210,42 +236,48 @@ class GameManager {
   startLevel(difficulty, levelIndex = null) {
     console.log('Starting level:', difficulty, levelIndex);
     
+    // Clean up any existing timer
+    this.stopTimer();
+    
     this.currentDifficulty = difficulty;
     const availableLevels = this.gameData[difficulty] || [];
     
     if (availableLevels.length === 0) {
-        console.error('No levels available for difficulty:', difficulty);
-        return false;
+      console.error('No levels available for difficulty:', difficulty);
+      return false;
     }
     
-    // If a specific level index is provided, use it
+    // Check if specific level is already completed
+    if (levelIndex !== null && this.isLevelCompleted(difficulty, levelIndex)) {
+      console.log('Level already completed:', levelIndex);
+      return { 
+        success: false, 
+        alreadyCompleted: true, 
+        message: 'This level has already been completed!' 
+      };
+    }
+    
+    // Determine which level to play
     if (levelIndex !== null && levelIndex >= 0 && levelIndex < availableLevels.length) {
-        this.currentBrand = availableLevels[levelIndex];
-        this.currentLevel = levelIndex;
-        console.log('Starting specific level:', levelIndex, this.currentBrand.name);
+      this.currentBrand = availableLevels[levelIndex];
+      this.currentLevel = levelIndex;
     } else {
-        // Otherwise, find the next uncompleted level
-        const progress = this.getDifficultyProgress(difficulty);
-        let nextLevelIndex = 0;
-        
-        if (progress.completedLevels) {
-            // Find the first uncompleted level
-            for (let i = 0; i < availableLevels.length; i++) {
-                if (!progress.completedLevels.includes(i)) {
-                    nextLevelIndex = i;
-                    break;
-                }
-            }
-        }
-        
-        this.currentBrand = availableLevels[nextLevelIndex];
-        this.currentLevel = nextLevelIndex;
-        console.log('Starting next uncompleted level:', nextLevelIndex, this.currentBrand.name);
+      // Find next uncompleted level
+      const nextLevel = this.getNextUncompletedLevel(difficulty);
+      if (nextLevel === null) {
+        return { 
+          success: false, 
+          allCompleted: true, 
+          message: 'All levels in this difficulty are completed!' 
+        };
+      }
+      this.currentBrand = availableLevels[nextLevel];
+      this.currentLevel = nextLevel;
     }
 
     if (!this.currentBrand) {
-        console.error('No brand data available for level');
-        return false;
+      console.error('No brand data available for level');
+      return false;
     }
 
     // Reset game state
@@ -259,16 +291,16 @@ class GameManager {
     this.revealsUsed = 0;
     this.currentScore = 0;
     this.levelScore = 0;
+    this.retryCount = 0; // Reset retry count
     
     // Start timer
     this.startTimer();
     
     console.log('Level started successfully with brand:', this.currentBrand.name);
     return true;
-}
+  }
 
   retryLevel() {
-    // Check if retry is allowed
     if (this.retryCount >= this.maxRetries) {
       return { 
         success: false, 
@@ -276,9 +308,8 @@ class GameManager {
       };
     }
     
-    // Apply retry penalty to total score
-    const penalty = Math.floor(25 * this.retryPenalty);
-    this.totalScore = Math.max(0, this.totalScore - penalty);
+    // Apply fixed retry penalty
+    this.totalScore = Math.max(0, this.totalScore - this.retryPenalty);
     this.retryCount++;
     
     // Reset for retry
@@ -289,30 +320,27 @@ class GameManager {
     this.strikes = 0;
     this.hintsUsed = 0;
     this.revealsUsed = 0;
-    this.levelScore = -penalty; // Track negative score for this attempt
+    this.levelScore = -this.retryPenalty;
     
     // Restart timer
     this.startTimer();
     
     return { 
       success: true, 
-      penalty, 
+      penalty: this.retryPenalty, 
       retriesLeft: this.maxRetries - this.retryCount,
-      message: `Retry penalty: -${penalty} points. ${this.maxRetries - this.retryCount} retries left.`
+      message: `Retry penalty: -${this.retryPenalty} points. ${this.maxRetries - this.retryCount} retries left.`
     };
   }
 
   skipLevel() {
-    // Skip penalty
     const skipPenalty = 30;
     this.totalScore = Math.max(0, this.totalScore - skipPenalty);
     
-    // Mark level as failed
     const progress = this.getDifficultyProgress(this.currentDifficulty);
     if (!progress.failed) progress.failed = [];
     progress.failed.push(this.currentLevel);
     
-    // Save progress
     this.saveProgress();
     
     return {
@@ -333,7 +361,6 @@ class GameManager {
     this.timerInterval = setInterval(() => {
       this.timeTaken = Math.floor((Date.now() - this.timeStarted) / 1000);
       
-      // Dispatch timer update event
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('timer-update', { 
           detail: { time: this.timeTaken } 
@@ -347,6 +374,7 @@ class GameManager {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
+    this.timeTaken = Math.floor((Date.now() - this.timeStarted) / 1000);
   }
 
   generateRandomLetters() {
@@ -354,10 +382,8 @@ class GameManager {
     const wordLetters = [...new Set(this.currentWord.replace(/\s/g, ''))];
     const randomLetters = [];
     
-    // Add all letters from the word
     randomLetters.push(...wordLetters);
     
-    // Add random letters to make it challenging (total 15 letters)
     while (randomLetters.length < 15) {
       const randomLetter = alphabet[Math.floor(Math.random() * alphabet.length)];
       if (!randomLetters.includes(randomLetter)) {
@@ -365,7 +391,6 @@ class GameManager {
       }
     }
     
-    // Shuffle the letters
     return randomLetters.sort(() => Math.random() - 0.5);
   }
 
@@ -374,7 +399,6 @@ class GameManager {
       return { success: false, message: 'Letter already guessed' };
     }
 
-    // Check if game is already over
     if (this.strikes >= this.maxStrikes) {
       return { success: false, message: 'Game over - too many strikes!' };
     }
@@ -387,7 +411,6 @@ class GameManager {
     if (isCorrect) {
       this.correctGuesses.push(letter);
       
-      // Check if word is complete
       const wordComplete = this.currentWord
         .split('')
         .every(char => char === ' ' || this.guessedLetters.includes(char));
@@ -409,23 +432,16 @@ class GameManager {
         complete: false 
       };
     } else {
-      // Wrong guess - apply strike and penalty
       this.wrongGuesses.push(letter);
       this.strikes++;
       
-      // Immediate penalty for wrong guess
       const strikePenalty = this.strikesPenalty;
       this.totalScore = Math.max(0, this.totalScore - strikePenalty);
       this.levelScore -= strikePenalty;
       
-      // Update strike display
-      this.updateStrikeDisplay();
-      
-      // Check if game over (3 strikes)
       if (this.strikes >= this.maxStrikes) {
         this.stopTimer();
         
-        // Additional penalty for failing the level
         const failPenalty = 20;
         this.totalScore = Math.max(0, this.totalScore - failPenalty);
         
@@ -451,20 +467,6 @@ class GameManager {
     }
   }
 
-  updateStrikeDisplay() {
-    // Update strike indicators
-    for (let i = 1; i <= this.maxStrikes; i++) {
-      const strikeEl = document.getElementById(`strike-${i}`);
-      if (strikeEl) {
-        if (i <= this.strikes) {
-          strikeEl.classList.add('active');
-        } else {
-          strikeEl.classList.remove('active');
-        }
-      }
-    }
-  }
-
   useHint() {
     const hintCost = this.hintsUsed === 0 ? 10 : 15;
     
@@ -476,14 +478,12 @@ class GameManager {
       return { success: false, message: 'No more hints available' };
     }
 
-    // Deduct points
     this.totalScore -= hintCost;
     this.levelScore -= hintCost;
     
     const hint = this.currentBrand.hints[this.hintsUsed];
     this.hintsUsed++;
     
-    // Save the updated score
     localStorage.setItem('watches_lq_total_score', this.totalScore.toString());
     
     return { success: true, hint, newTotalScore: this.totalScore };
@@ -504,7 +504,6 @@ class GameManager {
       return { success: false, message: 'All letters already revealed' };
     }
 
-    // Deduct points
     this.totalScore -= revealCost;
     this.levelScore -= revealCost;
     
@@ -513,10 +512,8 @@ class GameManager {
     this.correctGuesses.push(letterToReveal);
     this.revealsUsed++;
     
-    // Save the updated score
     localStorage.setItem('watches_lq_total_score', this.totalScore.toString());
     
-    // Check if word is complete
     const wordComplete = this.currentWord
       .split('')
       .every(char => char === ' ' || this.guessedLetters.includes(char));
@@ -538,7 +535,7 @@ class GameManager {
     const wordLength = this.currentWord.replace(/\s/g, '').length;
     let baseScore = GAME_CONFIG.pointsPerLevel.minimum;
     
-    // Base score calculation
+    // Base score based on attempts
     if (this.attempts === wordLength) {
       baseScore = GAME_CONFIG.pointsPerLevel.perfect;
     } else if (this.attempts <= wordLength + 2) {
@@ -547,18 +544,22 @@ class GameManager {
       baseScore = GAME_CONFIG.pointsPerLevel.okay;
     }
     
-    // Time bonus/penalty
-    if (this.timeTaken < 30) {
-      baseScore += 20; // Quick solve bonus
-    } else if (this.timeTaken < 60) {
-      baseScore += 10;
-    } else if (this.timeTaken > 120) {
-      baseScore -= Math.min(20, Math.floor((this.timeTaken - 120) / 10) * 2);
+    // Enhanced time bonus calculation
+    const expectedTime = wordLength * 5; // 5 seconds per letter expected
+    const timeDifference = expectedTime - this.timeTaken;
+    
+    if (timeDifference > 0) {
+      // Finished faster than expected
+      baseScore += Math.min(30, Math.floor(timeDifference / 2));
+    } else {
+      // Took longer than expected
+      const penalty = Math.min(30, Math.floor(Math.abs(timeDifference) / 4));
+      baseScore -= penalty;
     }
     
-    // Apply retry penalty if this was a retry
+    // Apply retry penalty
     if (this.retryCount > 0) {
-      baseScore = Math.floor(baseScore * Math.pow(1 - this.retryPenalty, this.retryCount));
+      baseScore = Math.floor(baseScore * 0.5); // 50% penalty for retries
     }
     
     // Difficulty multiplier
@@ -569,7 +570,6 @@ class GameManager {
     };
     baseScore = Math.floor(baseScore * (difficultyMultiplier[this.currentDifficulty] || 1));
     
-    // Final score (don't let it go below 0)
     this.currentScore = Math.max(0, baseScore);
     this.levelScore += this.currentScore;
     this.totalScore += this.currentScore;
@@ -593,42 +593,39 @@ class GameManager {
   async completeLevel() {
     const progress = this.getDifficultyProgress(this.currentDifficulty);
     
-    // Store the score for this specific level
     if (!progress.scores) {
-        progress.scores = [];
+      progress.scores = [];
     }
     
-    // Update the score for this level (use currentLevel as index)
+    // Update score for this level
     if (!progress.scores[this.currentLevel] || progress.scores[this.currentLevel] < this.currentScore) {
-        progress.scores[this.currentLevel] = this.currentScore;
+      progress.scores[this.currentLevel] = this.currentScore;
     }
     
-    // Mark this specific level as completed
+    // Mark level as completed
     if (!progress.completedLevels) {
-        progress.completedLevels = [];
+      progress.completedLevels = [];
     }
     if (!progress.completedLevels.includes(this.currentLevel)) {
-        progress.completedLevels.push(this.currentLevel);
-        progress.completed = progress.completedLevels.length;
+      progress.completedLevels.push(this.currentLevel);
+      progress.completed = progress.completedLevels.length;
     }
     
-    // Reset retry count for next level
     this.retryCount = 0;
     
-    // Save progress
     await this.saveProgress();
     
     return {
-        score: this.currentScore,
-        levelScore: this.levelScore,
-        attempts: this.attempts,
-        hintsUsed: this.hintsUsed,
-        revealsUsed: this.revealsUsed,
-        strikes: this.strikes,
-        timeTaken: this.timeTaken,
-        totalScore: this.totalScore
+      score: this.currentScore,
+      levelScore: this.levelScore,
+      attempts: this.attempts,
+      hintsUsed: this.hintsUsed,
+      revealsUsed: this.revealsUsed,
+      strikes: this.strikes,
+      timeTaken: this.timeTaken,
+      totalScore: this.totalScore
     };
-}
+  }
 
   getDisplayWord() {
     if (!this.currentWord) return '';
@@ -655,7 +652,12 @@ class GameManager {
     };
   }
 
-  // Default data methods
+  getLevelScore(difficulty, levelIndex) {
+    const progress = this.getDifficultyProgress(difficulty);
+    return progress.scores[levelIndex] || 0;
+  }
+
+  // Default data methods remain the same...
   getDefaultEasyData() {
     return [
       {
