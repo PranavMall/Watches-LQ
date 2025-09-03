@@ -119,6 +119,35 @@
         </div>
     </div>
 
+    <!-- Level Grid Screen - Add this after the level-select-screen div -->
+<div id="level-grid-screen" class="screen">
+    <div class="container">
+        <div class="level-grid-header">
+            <h2><span id="grid-difficulty-name">Easy</span> Levels</h2>
+            <div class="level-grid-stats">
+                <div class="level-grid-stat">
+                    <div class="level-grid-stat-value">
+                        <span id="grid-completed-count">0</span>/<span id="grid-total-count">10</span>
+                    </div>
+                    <div class="level-grid-stat-label">Completed</div>
+                </div>
+                <div class="level-grid-stat">
+                    <div class="level-grid-stat-value" id="grid-difficulty-score">0</div>
+                    <div class="level-grid-stat-label">Total Score</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="levels-grid" id="levels-grid-container">
+            <!-- Level tiles will be dynamically generated here -->
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <button id="back-from-grid" class="btn btn-secondary">← Back to Difficulties</button>
+        </div>
+    </div>
+</div>
+
     <!-- Game Screen -->
     <div id="game-screen" class="screen">
         <div class="container">
