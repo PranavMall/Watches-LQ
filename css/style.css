@@ -243,6 +243,151 @@ body {
   font-size: 0.9rem;
 }
 
+/* Level Grid Screen Styles - Add to css/style.css */
+
+.level-grid-header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1.5rem;
+  color: white;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.level-grid-header h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+  font-weight: 300;
+}
+
+.level-grid-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.level-grid-stat {
+  text-align: center;
+}
+
+.level-grid-stat-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--accent-gold);
+}
+
+.level-grid-stat-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-top: 0.25rem;
+}
+
+.levels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 15px;
+  margin-bottom: 2rem;
+}
+
+.level-tile {
+  aspect-ratio: 1;
+  background: var(--surface);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  border: 2px solid transparent;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.level-tile:hover:not(.locked):not(.completed) {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-color);
+}
+
+.level-tile.completed {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: white;
+  border-color: #45a049;
+}
+
+.level-tile.completed .level-number {
+  font-size: 1.8rem;
+}
+
+.level-tile.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #e0e0e0;
+}
+
+.level-tile.current {
+  border-color: var(--accent-gold);
+  border-width: 3px;
+  animation: glow 2s infinite;
+}
+
+@keyframes glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+  }
+}
+
+.level-tile .level-number {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.level-tile.completed .level-number {
+  color: white;
+}
+
+.level-tile .level-score {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  opacity: 0.9;
+}
+
+.level-tile .level-check {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 1.2rem;
+}
+
+/* Mobile adjustments for level grid */
+@media (max-width: 768px) {
+  .levels-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+  }
+  
+  .level-tile .level-number {
+    font-size: 1.5rem;
+  }
+  
+  .level-grid-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .level-grid-stat-value {
+    font-size: 1.2rem;
+  }
+}
+
 /* Game Header - With score below username */
 .game-header {
   background: var(--surface);
