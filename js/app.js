@@ -1,11 +1,12 @@
+// js/app.js - Fixed with Level Grid and iOS Navigation
 class App {
   constructor() {
     this.authManager = null;
     this.gameManager = null;
     this.currentScreen = 'loading';
     this.isInitialized = false;
+    this.currentDifficultyView = null; // Track which difficulty grid we're viewing
     
-    // Start initialization
     this.init();
   }
 
@@ -13,10 +14,8 @@ class App {
     try {
       console.log('App init started...');
       
-      // Update loading status
       this.updateLoadingStatus('Initializing Supabase...');
       
-      // Initialize Supabase with a timeout
       const supabaseInit = new Promise((resolve, reject) => {
         setTimeout(() => {
           if (typeof window.supabase !== 'undefined') {
@@ -33,7 +32,7 @@ class App {
             }
           } else {
             console.warn('Supabase not available, continuing without it');
-            resolve(); // Continue without Supabase
+            resolve();
           }
         }, 100);
       });
@@ -45,17 +44,13 @@ class App {
         console.warn('Supabase initialization failed, continuing offline:', err);
       });
 
-      // Update loading status
       this.updateLoadingStatus('Loading game managers...');
 
-      // Initialize managers (they should handle missing Supabase gracefully)
       this.authManager = new AuthManager();
       this.gameManager = new GameManager(this.authManager);
 
-      // Update loading status
       this.updateLoadingStatus('Loading game data...');
 
-      // Load game data with timeout
       await Promise.race([
         this.gameManager.loadGameData(),
         new Promise((resolve) => setTimeout(() => {
@@ -64,23 +59,18 @@ class App {
         }, 3000))
       ]);
 
-      // Register service worker (non-blocking)
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(err => 
           console.warn('Service worker registration failed:', err)
         );
       }
 
-      // Setup event listeners
       this.setupEventListeners();
 
-      // Update loading status
       this.updateLoadingStatus('Ready to play!');
 
-      // Mark as initialized
       this.isInitialized = true;
 
-      // Show start screen after a short delay
       setTimeout(() => {
         console.log('Showing start screen...');
         this.showScreen('start');
@@ -103,10 +93,8 @@ class App {
   handleInitError(error) {
     console.error('Initialization failed:', error);
     
-    // Try to continue anyway
     this.updateLoadingStatus('Starting in offline mode...');
     
-    // Initialize with defaults
     if (!this.authManager) {
       this.authManager = new AuthManager();
     }
@@ -114,10 +102,8 @@ class App {
       this.gameManager = new GameManager(this.authManager);
     }
     
-    // Setup listeners
     this.setupEventListeners();
     
-    // Show start screen
     setTimeout(() => {
       this.showScreen('start');
     }, 1000);
@@ -173,23 +159,38 @@ class App {
       logoutBtn.addEventListener('click', () => this.handleLogout());
     }
 
-    // Game events
+    // Difficulty selection events
     document.querySelectorAll('.difficulty-card').forEach(card => {
       card.addEventListener('click', () => {
-        this.handleDifficultySelect(card.dataset.level);
+        const difficulty = card.dataset.level;
+        this.handleDifficultySelect(difficulty);
       });
     });
 
+    // Level grid back button
+    const backFromGridBtn = document.getElementById('back-from-grid');
+    if (backFromGridBtn) {
+      backFromGridBtn.addEventListener('click', () => this.showLevelSelect());
+    }
+
+    // Game screen back buttons
     const backToLevelsBtn = document.getElementById('back-to-levels');
     if (backToLevelsBtn) {
-      backToLevelsBtn.addEventListener('click', () => this.showLevelSelect());
+      backToLevelsBtn.addEventListener('click', () => {
+        // Clean up timer when leaving game screen
+        if (this.gameManager) {
+          this.gameManager.stopTimer();
+        }
+        this.showLevelGrid(this.currentDifficultyView);
+      });
     }
 
     const backToLevelsCompleteBtn = document.getElementById('back-to-levels-complete');
     if (backToLevelsCompleteBtn) {
-      backToLevelsCompleteBtn.addEventListener('click', () => this.showLevelSelect());
+      backToLevelsCompleteBtn.addEventListener('click', () => this.showLevelGrid(this.currentDifficultyView));
     }
 
+    // Game action events
     const hintBtn = document.getElementById('hint-btn');
     if (hintBtn) {
       hintBtn.addEventListener('click', () => this.handleHint());
@@ -204,28 +205,36 @@ class App {
     if (nextLevelBtn) {
       nextLevelBtn.addEventListener('click', () => this.handleNextLevel());
     }
-    // Add game over listeners
-  this.setupGameOverListeners();
+
+    // Game over listeners
+    this.setupGameOverListeners();
   }
 
   showScreen(screenId) {
     console.log('Showing screen:', screenId);
     
-    // Hide all screens
+    // Clean up any running timers when switching screens
+    if (this.gameManager && screenId !== 'game') {
+      this.gameManager.stopTimer();
+    }
+    
     document.querySelectorAll('.screen').forEach(screen => {
       screen.classList.remove('active');
     });
 
-    // Show target screen
     const targetScreen = document.getElementById(`${screenId}-screen`);
     if (targetScreen) {
-      targetScreen.classList.add('active');
-      this.currentScreen = screenId;
+      // Use setTimeout for iOS smooth transition
+      setTimeout(() => {
+        targetScreen.classList.add('active');
+        this.currentScreen = screenId;
 
-      // Update screen-specific content
-      if (screenId === 'level-select') {
-        this.updateLevelSelect();
-      }
+        if (screenId === 'level-select') {
+          this.updateLevelSelect();
+        } else if (screenId === 'level-grid') {
+          this.updateLevelGrid();
+        }
+      }, 10);
     } else {
       console.error('Screen not found:', screenId);
     }
@@ -319,7 +328,6 @@ class App {
     document.getElementById('user-name').textContent = userName;
     document.getElementById('total-score').textContent = `${totalScore} pts`;
 
-    // Update difficulty cards
     ['easy', 'medium', 'hard'].forEach(difficulty => {
       const card = document.querySelector(`.difficulty-card[data-level="${difficulty}"]`);
       if (!card) return;
@@ -327,25 +335,29 @@ class App {
       const progress = this.gameManager.getDifficultyProgress(difficulty);
       const isUnlocked = this.gameManager.isDifficultyUnlocked(difficulty);
       const totalLevels = this.gameManager.gameData[difficulty]?.length || 10;
+      const completedCount = (progress.completedLevels || []).length;
 
-      // Update completion count
       const completedElement = card.querySelector('.completed');
       if (completedElement) {
-        completedElement.textContent = `${progress.completed}/${totalLevels}`;
+        completedElement.textContent = `${completedCount}/${totalLevels}`;
       }
 
-      // Update lock status
       const statusElement = card.querySelector('.status');
       if (isUnlocked) {
         card.classList.remove('locked');
         if (statusElement) {
-          statusElement.textContent = 'Available';
+          if (completedCount === totalLevels) {
+            statusElement.textContent = '✅ All Completed!';
+            statusElement.style.color = 'var(--success)';
+          } else {
+            statusElement.textContent = 'Available';
+          }
         }
       } else {
         card.classList.add('locked');
         if (statusElement) {
           const requiredDifficulty = difficulty === 'medium' ? 'Easy' : 'Medium';
-          const required = GAME_CONFIG.unlockRequirement[difficulty];
+          const required = GAME_CONFIG.unlockRequirement[difficulty] || 2;
           statusElement.textContent = `Complete ${required} ${requiredDifficulty} levels`;
         }
       }
@@ -358,67 +370,128 @@ class App {
       return;
     }
 
-    // Start a level in the selected difficulty
-    if (this.gameManager.startLevel(difficulty)) {
+    this.currentDifficultyView = difficulty;
+    this.showLevelGrid(difficulty);
+  }
+
+  showLevelGrid(difficulty) {
+    this.currentDifficultyView = difficulty;
+    this.showScreen('level-grid');
+    this.updateLevelGrid();
+  }
+
+  updateLevelGrid() {
+    const difficulty = this.currentDifficultyView;
+    const levels = this.gameManager.gameData[difficulty] || [];
+    const progress = this.gameManager.getDifficultyProgress(difficulty);
+    
+    // Update header
+    document.getElementById('grid-difficulty-name').textContent = 
+      difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+    
+    const completedCount = (progress.completedLevels || []).length;
+    document.getElementById('grid-completed-count').textContent = completedCount;
+    document.getElementById('grid-total-count').textContent = levels.length;
+    
+    // Calculate total score for this difficulty
+    const difficultyScore = (progress.scores || []).reduce((sum, score) => sum + (score || 0), 0);
+    document.getElementById('grid-difficulty-score').textContent = difficultyScore;
+    
+    // Create level tiles
+    const container = document.getElementById('levels-grid-container');
+    container.innerHTML = '';
+    
+    levels.forEach((level, index) => {
+      const isCompleted = this.gameManager.isLevelCompleted(difficulty, index);
+      const levelScore = this.gameManager.getLevelScore(difficulty, index);
+      const nextUncompleted = this.gameManager.getNextUncompletedLevel(difficulty);
+      const isNext = index === nextUncompleted;
+      
+      const tile = document.createElement('div');
+      tile.className = 'level-tile';
+      if (isCompleted) tile.classList.add('completed');
+      if (isNext && !isCompleted) tile.classList.add('current');
+      
+      tile.innerHTML = `
+        <div class="level-number">${index + 1}</div>
+        ${isCompleted ? `
+          <div class="level-score">${levelScore} pts</div>
+          <div class="level-check">✓</div>
+        ` : ''}
+      `;
+      
+      tile.addEventListener('click', () => {
+        this.handleLevelSelect(difficulty, index);
+      });
+      
+      container.appendChild(tile);
+    });
+  }
+
+  handleLevelSelect(difficulty, levelIndex) {
+    const result = this.gameManager.startLevel(difficulty, levelIndex);
+    
+    if (result === true) {
       this.showGameScreen();
+    } else if (result.alreadyCompleted) {
+      this.showError('This level has already been completed! Play an uncompleted level.');
+    } else if (result.allCompleted) {
+      this.showError('Congratulations! All levels in this difficulty are completed.');
     } else {
-      this.showError('No levels available in this difficulty');
+      this.showError('Failed to start level');
     }
   }
 
   showGameScreen() {
     this.showScreen('game');
-    this.updateGameScreen();
+    // Use requestAnimationFrame for smoother iOS rendering
+    requestAnimationFrame(() => {
+      this.updateGameScreen();
+    });
   }
 
-// Update the showGameScreen method to reset strikes display
-updateGameScreen() {
-  const brand = this.gameManager.getCurrentBrand();
-  if (!brand) {
-    this.showError('No brand data available');
-    return;
-  }
-
-  const levelInfo = this.gameManager.getCurrentLevelInfo();
-
-  // Update header
-  document.getElementById('current-level').textContent = 
-    `${levelInfo.difficulty.charAt(0).toUpperCase() + levelInfo.difficulty.slice(1)} ${levelInfo.level}/${levelInfo.total}`;
-  document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
-
-  // Update logo
-  const logoElement = document.getElementById('brand-logo');
-  if (logoElement) {
-    logoElement.src = brand.image;
-    logoElement.alt = 'Guess the brand';
-  }
-
-  // Update word display
-  document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
-
-  // Generate and display letter buttons
-  this.updateLetterButtons();
-
-  // Clear hint display
-  document.getElementById('hint-display').textContent = '';
-  
-  // Reset strikes display
-  for (let i = 1; i <= 3; i++) {
-    const strikeEl = document.getElementById(`strike-${i}`);
-    if (strikeEl) {
-      strikeEl.classList.remove('active');
+  updateGameScreen() {
+    const brand = this.gameManager.getCurrentBrand();
+    if (!brand) {
+      this.showError('No brand data available');
+      return;
     }
+
+    const levelInfo = this.gameManager.getCurrentLevelInfo();
+
+    document.getElementById('current-level').textContent = 
+      `${levelInfo.difficulty.charAt(0).toUpperCase() + levelInfo.difficulty.slice(1)} ${levelInfo.level}/${levelInfo.total}`;
+    document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
+
+    const logoElement = document.getElementById('brand-logo');
+    if (logoElement) {
+      logoElement.src = brand.image;
+      logoElement.alt = 'Guess the brand';
+      logoElement.onerror = () => {
+        logoElement.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150"><rect fill="%23f0f0f0" width="200" height="150"/><text y="75" font-size="14" text-anchor="middle" x="100" fill="%23999">Image Not Found</text></svg>';
+      };
+    }
+
+    document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
+
+    this.updateLetterButtons();
+
+    document.getElementById('hint-display').textContent = '';
+    
+    for (let i = 1; i <= 3; i++) {
+      const strikeEl = document.getElementById(`strike-${i}`);
+      if (strikeEl) {
+        strikeEl.classList.remove('active');
+      }
+    }
+    
+    this.updateActionButtons();
   }
-  
-  // Update hint and reveal button visibility based on score
-  this.updateActionButtons();
-}
-  
+
   updateActionButtons() {
     const hintBtn = document.getElementById('hint-btn');
     const revealBtn = document.getElementById('reveal-btn');
     
-    // Update hint button
     if (hintBtn) {
       const canUseHint = this.gameManager.canUseHint();
       const hintCost = this.gameManager.hintsUsed === 0 ? 10 : 15;
@@ -431,7 +504,6 @@ updateGameScreen() {
       }
     }
     
-    // Update reveal button
     if (revealBtn) {
       const canUseReveal = this.gameManager.canUseReveal();
       
@@ -464,199 +536,178 @@ updateGameScreen() {
     });
   }
 
-handleLetterGuess(letter, button) {
-  const result = this.gameManager.makeGuess(letter);
+  async handleLetterGuess(letter, button) {
+    const result = this.gameManager.makeGuess(letter);
 
-  if (!result.success) {
-    this.showError(result.message);
-    return;
-  }
-
-  // Update button state
-  button.disabled = true;
-  
-  if (result.correct) {
-    button.classList.add('correct');
-    // Update word display
-    document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
-    
-    // Update action buttons visibility after each guess
-    this.updateActionButtons();
-    
-    if (result.complete) {
-      this.handleLevelComplete();
-    }
-  } else {
-    // Wrong guess
-    button.style.opacity = '0.3';
-    button.style.background = '#ffebee';
-    
-    // Show strike feedback
-    this.showStrikeFeedback(result.strikes, result.strikesLeft);
-    
-    // Check if game over
-    if (result.gameOver) {
-      // Disable all remaining buttons
-      document.querySelectorAll('.letter-btn:not(:disabled)').forEach(btn => {
-        btn.disabled = true;
-        btn.style.opacity = '0.2';
-      });
-      
-      // Show game over after a short delay
-      setTimeout(() => {
-        this.showGameOver(result);
-      }, 1500);
-    } else {
-      // Show warning if on last strike
-      if (result.strikesLeft === 1) {
-        this.showError(`⚠️ Careful! Only 1 strike left! (-${result.penalty} pts)`);
-      } else {
-        this.showError(`Wrong! ${result.strikesLeft} strikes left. (-${result.penalty} pts)`);
-      }
-    }
-    
-    // Update score display
-    document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
-  }
-}
-
-// Show strike feedback animation
-showStrikeFeedback(strikes, strikesLeft) {
-  const strikeEl = document.getElementById(`strike-${strikes}`);
-  if (strikeEl) {
-    strikeEl.classList.add('active');
-    strikeEl.style.animation = 'pulse 0.5s';
-    setTimeout(() => {
-      strikeEl.style.animation = '';
-    }, 500);
-  }
-}
-
-// Show game over screen
-showGameOver(result) {
-  const brand = this.gameManager.getCurrentBrand();
-  const levelInfo = this.gameManager.getCurrentLevelInfo();
-  
-  // Update game over screen
-  document.getElementById('gameover-logo').src = brand.image;
-  document.getElementById('gameover-brand-name').textContent = result.answer;
-  document.getElementById('penalty-amount').textContent = result.totalPenalty;
-  document.getElementById('retries-left').textContent = levelInfo.retriesLeft;
-  
-  // Update retry button based on retries left
-  const retryBtn = document.getElementById('retry-level-btn');
-  if (levelInfo.retriesLeft > 0) {
-    retryBtn.style.display = 'inline-block';
-    retryBtn.innerHTML = `🔄 Retry (-${Math.floor(25 * 0.5)} pts)`;
-  } else {
-    retryBtn.style.display = 'none';
-  }
-  
-  this.showScreen('game-over');
-}
-  setupGameOverListeners() {
-  // Retry button
-  document.getElementById('retry-level-btn').addEventListener('click', () => {
-    const result = this.gameManager.retryLevel();
-    
-    if (result.success) {
-      this.showMessage(result.message);
-      this.showGameScreen();
-    } else {
+    if (!result.success) {
       this.showError(result.message);
+      return;
     }
-  });
-    // Skip button
-  document.getElementById('skip-level-btn').addEventListener('click', () => {
-    const result = this.gameManager.skipLevel();
+
+    button.disabled = true;
     
-    if (result.success) {
-      this.showMessage(result.message);
-      // Move to next level
-      this.handleNextLevel();
+    if (result.correct) {
+      button.classList.add('correct');
+      document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
+      
+      this.updateActionButtons();
+      
+      if (result.complete) {
+        // Fix for iOS: Use setTimeout to ensure state is saved before screen transition
+        setTimeout(async () => {
+          await this.handleLevelComplete();
+        }, 100);
+      }
+    } else {
+      button.style.opacity = '0.3';
+      button.style.background = '#ffebee';
+      
+      this.showStrikeFeedback(result.strikes, result.strikesLeft);
+      
+      if (result.gameOver) {
+        document.querySelectorAll('.letter-btn:not(:disabled)').forEach(btn => {
+          btn.disabled = true;
+          btn.style.opacity = '0.2';
+        });
+        
+        setTimeout(() => {
+          this.showGameOver(result);
+        }, 1500);
+      } else {
+        if (result.strikesLeft === 1) {
+          this.showError(`⚠️ Careful! Only 1 strike left! (-${result.penalty} pts)`);
+        } else {
+          this.showError(`Wrong! ${result.strikesLeft} strikes left. (-${result.penalty} pts)`);
+        }
+      }
+      
+      document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
     }
-  });
-  
-  // Back to levels
-  document.getElementById('back-to-levels-gameover').addEventListener('click', () => {
-    this.showLevelSelect();
-  });
-}
+  }
+
+  showStrikeFeedback(strikes, strikesLeft) {
+    const strikeEl = document.getElementById(`strike-${strikes}`);
+    if (strikeEl) {
+      strikeEl.classList.add('active');
+      strikeEl.style.animation = 'pulse 0.5s';
+      setTimeout(() => {
+        strikeEl.style.animation = '';
+      }, 500);
+    }
+  }
+
+  showGameOver(result) {
+    const brand = this.gameManager.getCurrentBrand();
+    const levelInfo = this.gameManager.getCurrentLevelInfo();
+    
+    document.getElementById('gameover-logo').src = brand.image;
+    document.getElementById('gameover-brand-name').textContent = result.answer;
+    document.getElementById('penalty-amount').textContent = result.totalPenalty;
+    document.getElementById('retries-left').textContent = levelInfo.retriesLeft;
+    
+    const retryBtn = document.getElementById('retry-level-btn');
+    if (levelInfo.retriesLeft > 0) {
+      retryBtn.style.display = 'inline-block';
+      retryBtn.innerHTML = `🔄 Retry (-25 pts)`;
+    } else {
+      retryBtn.style.display = 'none';
+    }
+    
+    this.showScreen('game-over');
+  }
+
+  setupGameOverListeners() {
+    document.getElementById('retry-level-btn').addEventListener('click', () => {
+      const result = this.gameManager.retryLevel();
+      
+      if (result.success) {
+        this.showMessage(result.message);
+        this.showGameScreen();
+      } else {
+        this.showError(result.message);
+      }
+    });
+
+    document.getElementById('skip-level-btn').addEventListener('click', () => {
+      const result = this.gameManager.skipLevel();
+      
+      if (result.success) {
+        this.showMessage(result.message);
+        this.handleNextLevel();
+      }
+    });
+    
+    document.getElementById('back-to-levels-gameover').addEventListener('click', () => {
+      this.showLevelGrid(this.currentDifficultyView);
+    });
+  }
 
   async handleLevelComplete() {
-    const stats = await this.gameManager.completeLevel();
-    this.showLevelComplete(stats);
+    try {
+      const stats = await this.gameManager.completeLevel();
+      // Use requestAnimationFrame for smooth iOS transition
+      requestAnimationFrame(() => {
+        this.showLevelComplete(stats);
+      });
+    } catch (error) {
+      console.error('Error completing level:', error);
+      this.showError('Error saving level progress');
+    }
   }
 
   showLevelComplete(stats) {
     const brand = this.gameManager.getCurrentBrand();
 
-    // Update completion screen
     document.getElementById('completed-logo').src = brand.image;
     document.getElementById('completed-brand-name').textContent = brand.name;
     document.getElementById('level-score').textContent = `${stats.score} pts`;
     document.getElementById('level-attempts').textContent = stats.attempts;
     document.getElementById('brand-founded').textContent = brand.founded || 'N/A';
     document.getElementById('brand-description').textContent = 
-        brand.description || 'A prestigious watch manufacturer.';
+      brand.description || 'A prestigious watch manufacturer.';
     
-    // Update final time if element exists
     const finalTimeEl = document.getElementById('final-time');
     if (finalTimeEl) {
-        const minutes = Math.floor(stats.timeTaken / 60);
-        const seconds = stats.timeTaken % 60;
-        finalTimeEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      const minutes = Math.floor(stats.timeTaken / 60);
+      const seconds = stats.timeTaken % 60;
+      finalTimeEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    // Check if there are more levels
     const currentDifficulty = this.gameManager.currentDifficulty;
-    const currentLevel = this.gameManager.currentLevel;
-    const availableLevels = this.gameManager.gameData[currentDifficulty]?.length || 0;
+    const nextLevel = this.gameManager.getNextUncompletedLevel(currentDifficulty);
     
-    // Show/hide next button based on available levels
     const nextBtn = document.getElementById('next-level-btn');
     if (nextBtn) {
-        if (currentLevel + 1 < availableLevels) {
-            nextBtn.style.display = 'inline-block';
-            nextBtn.textContent = 'Next Level';
-        } else {
-            nextBtn.style.display = 'inline-block';
-            nextBtn.textContent = 'Complete! Back to Levels';
-        }
+      if (nextLevel !== null) {
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = 'Next Level';
+      } else {
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = 'All Complete! Back to Levels';
+      }
     }
 
     this.showScreen('level-complete');
-}
+  }
 
   handleNextLevel() {
     const currentDifficulty = this.gameManager.currentDifficulty;
-    const currentLevel = this.gameManager.currentLevel;
-    const availableLevels = this.gameManager.gameData[currentDifficulty]?.length || 0;
+    const nextLevel = this.gameManager.getNextUncompletedLevel(currentDifficulty);
 
-    console.log('handleNextLevel:', {
-        currentDifficulty,
-        currentLevel,
-        availableLevels,
-        nextLevel: currentLevel + 1
-    });
-
-    if (currentLevel + 1 < availableLevels) {
-        // Start the next level
-        const started = this.gameManager.startLevel(currentDifficulty, currentLevel + 1);
-        console.log('Next level started:', started);
-        
-        if (started) {
-            this.showGameScreen();
-        } else {
-            console.error('Failed to start next level');
-            this.showLevelSelect();
-        }
+    if (nextLevel !== null) {
+      const started = this.gameManager.startLevel(currentDifficulty, nextLevel);
+      
+      if (started === true) {
+        this.showGameScreen();
+      } else {
+        console.error('Failed to start next level');
+        this.showLevelGrid(currentDifficulty);
+      }
     } else {
-        // No more levels in this difficulty
-        this.showMessage('Congratulations! You completed all levels in this difficulty.');
-        this.showLevelSelect();
+      this.showMessage('Congratulations! You completed all levels in this difficulty.');
+      this.showLevelGrid(currentDifficulty);
     }
-}
+  }
 
   showLevelSelect() {
     this.showScreen('level-select');
@@ -667,10 +718,8 @@ showGameOver(result) {
     
     if (result.success) {
       document.getElementById('hint-display').textContent = result.hint;
-      // Update score display with new total score
       document.getElementById('current-score').textContent = 
         `${result.newTotalScore} pts`;
-      // Update action buttons visibility
       this.updateActionButtons();
     } else {
       this.showError(result.message);
@@ -681,10 +730,8 @@ showGameOver(result) {
     const result = this.gameManager.revealLetter();
     
     if (result.success) {
-      // Update word display
       document.getElementById('word-display').textContent = this.gameManager.getDisplayWord();
       
-      // Update letter buttons
       const buttons = document.querySelectorAll('.letter-btn');
       buttons.forEach(button => {
         if (button.textContent === result.letter) {
@@ -693,20 +740,15 @@ showGameOver(result) {
         }
       });
       
-      // Update score display with new total score
       document.getElementById('current-score').textContent = 
         `${result.newTotalScore} pts`;
       
-      // Update action buttons visibility
       this.updateActionButtons();
       
-      // Check if word is complete
-      const wordComplete = this.gameManager.currentWord
-        .split('')
-        .every(char => char === ' ' || this.gameManager.guessedLetters.includes(char));
-      
-      if (wordComplete) {
-        this.handleLevelComplete();
+      if (result.complete) {
+        setTimeout(async () => {
+          await this.handleLevelComplete();
+        }, 100);
       }
     } else {
       this.showError(result.message);
