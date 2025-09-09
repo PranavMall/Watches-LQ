@@ -154,6 +154,97 @@ class GameManager {
     }
   }
 
+  // Add this method to your GameManager class in game.js
+
+// Synchronous version of completeLevel for iOS
+completeLevelSync() {
+  const progress = this.getDifficultyProgress(this.currentDifficulty);
+  
+  if (!progress.scores) {
+    progress.scores = [];
+  }
+  
+  // Update score for this level
+  if (!progress.scores[this.currentLevel] || progress.scores[this.currentLevel] < this.currentScore) {
+    progress.scores[this.currentLevel] = this.currentScore;
+  }
+  
+  // Mark level as completed
+  if (!progress.completedLevels) {
+    progress.completedLevels = [];
+  }
+  if (!progress.completedLevels.includes(this.currentLevel)) {
+    progress.completedLevels.push(this.currentLevel);
+    progress.completed = progress.completedLevels.length;
+  }
+  
+  this.retryCount = 0;
+  
+  // Save progress synchronously (don't await)
+  this.saveProgressSync();
+  
+  return {
+    score: this.currentScore,
+    levelScore: this.levelScore,
+    attempts: this.attempts,
+    hintsUsed: this.hintsUsed,
+    revealsUsed: this.revealsUsed,
+    strikes: this.strikes,
+    timeTaken: this.timeTaken,
+    totalScore: this.totalScore
+  };
+}
+
+// Synchronous version of saveProgress for iOS
+saveProgressSync() {
+  try {
+    // Save to localStorage immediately
+    localStorage.setItem('watches_lq_total_score', this.totalScore.toString());
+    localStorage.setItem('watches_lq_progress', JSON.stringify(this.userProgress));
+    
+    // Queue the Supabase save for later (non-blocking)
+    const user = this.authManager.getCurrentUser();
+    if (user && window.supabaseClient && !this.authManager.isGuestUser()) {
+      // Save to Supabase in background (don't await)
+      setTimeout(() => {
+        this.saveToSupabase();
+      }, 100);
+    }
+  } catch (error) {
+    console.warn('Error in synchronous save:', error);
+    // Continue even if save fails
+  }
+}
+
+// Background Supabase save
+async saveToSupabase() {
+  try {
+    const user = this.authManager.getCurrentUser();
+    if (!user || !window.supabaseClient) return;
+    
+    for (const [difficulty, progress] of Object.entries(this.userProgress)) {
+      await window.supabaseClient
+        .from('user_progress')
+        .upsert([
+          {
+            user_id: user.id,
+            difficulty: difficulty,
+            completed_levels: progress.completed,
+            level_scores: progress.scores,
+            failed_levels: progress.failed || [],
+            completed_levels_array: progress.completedLevels || [],
+            total_score: this.totalScore,
+            updated_at: new Date().toISOString()
+          }
+        ], { onConflict: 'user_id,difficulty' });
+    }
+    
+    await this.updateLeaderboard();
+  } catch (error) {
+    console.warn('Background Supabase save failed:', error);
+  }
+}
+
   async updateLeaderboard() {
     const user = this.authManager.getCurrentUser();
     if (!user || !window.supabaseClient) return;
