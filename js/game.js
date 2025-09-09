@@ -245,6 +245,77 @@ async saveToSupabase() {
   }
 }
 
+  // Add this method to the GameManager class
+
+async resetGameProgress() {
+    console.log('Resetting game progress...');
+    
+    // Reset all in-memory progress
+    this.userProgress = {
+        easy: { completed: 0, scores: [], failed: [], completedLevels: [] },
+        medium: { completed: 0, scores: [], failed: [], completedLevels: [] },
+        hard: { completed: 0, scores: [], failed: [], completedLevels: [] }
+    };
+    
+    // Reset scores
+    this.totalScore = 100; // Back to starting score
+    this.currentScore = 0;
+    this.levelScore = 0;
+    
+    // Reset current game state
+    this.currentLevel = null;
+    this.currentBrand = null;
+    this.currentWord = '';
+    this.guessedLetters = [];
+    this.correctGuesses = [];
+    this.wrongGuesses = [];
+    this.attempts = 0;
+    this.strikes = 0;
+    this.hintsUsed = 0;
+    this.revealsUsed = 0;
+    this.retryCount = 0;
+    
+    // Clear localStorage
+    localStorage.removeItem('watches_lq_total_score');
+    localStorage.removeItem('watches_lq_progress');
+    
+    // Clear from Supabase if logged in
+    const user = this.authManager.getCurrentUser();
+    if (user && !this.authManager.isGuestUser() && window.supabaseClient) {
+        try {
+            // Delete all user progress records
+            await window.supabaseClient
+                .from('user_progress')
+                .delete()
+                .eq('user_id', user.id);
+            
+            // Update leaderboard with reset score
+            await window.supabaseClient
+                .from('leaderboard')
+                .upsert([
+                    {
+                        user_id: user.id,
+                        display_name: this.authManager.getDisplayName(),
+                        total_score: 100,
+                        levels_completed: 0,
+                        updated_at: new Date().toISOString()
+                    }
+                ], { onConflict: 'user_id' });
+                
+            console.log('Supabase data reset successfully');
+        } catch (error) {
+            console.warn('Failed to reset Supabase data:', error);
+        }
+    }
+    
+    console.log('Game progress reset complete');
+    
+    return {
+        success: true,
+        message: 'Game has been reset! Starting fresh with 100 points.'
+    };
+}
+
   async updateLeaderboard() {
     const user = this.authManager.getCurrentUser();
     if (!user || !window.supabaseClient) return;
