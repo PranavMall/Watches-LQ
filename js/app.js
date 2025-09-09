@@ -186,6 +186,31 @@ class App {
         this.showLevelGrid(this.currentDifficultyView);
       });
     }
+     // Reset game listeners
+    const resetGameBtn = document.getElementById('reset-game-btn');
+    if (resetGameBtn) {
+        resetGameBtn.addEventListener('click', () => this.showResetConfirmation());
+    }
+    
+    const confirmResetBtn = document.getElementById('confirm-reset-btn');
+    if (confirmResetBtn) {
+        confirmResetBtn.addEventListener('click', () => this.handleResetGame());
+    }
+    
+    const cancelResetBtn = document.getElementById('cancel-reset-btn');
+    if (cancelResetBtn) {
+        cancelResetBtn.addEventListener('click', () => this.hideResetConfirmation());
+    }
+    
+    // Close modal on background click
+    const resetModal = document.getElementById('reset-confirmation-modal');
+    if (resetModal) {
+        resetModal.addEventListener('click', (e) => {
+            if (e.target === resetModal) {
+                this.hideResetConfirmation();
+            }
+        });
+    }
 
     const backToLevelsCompleteBtn = document.getElementById('back-to-levels-complete');
     if (backToLevelsCompleteBtn) {
@@ -275,6 +300,63 @@ class App {
       }
     }
   }
+
+  // Add these methods to the App class
+
+showResetConfirmation() {
+    const modal = document.getElementById('reset-confirmation-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('visible');
+    }
+}
+
+hideResetConfirmation() {
+    const modal = document.getElementById('reset-confirmation-modal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+}
+
+async handleResetGame() {
+    console.log('Handling game reset...');
+    
+    // Show loading state
+    const confirmBtn = document.getElementById('confirm-reset-btn');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.textContent = 'Resetting...';
+    confirmBtn.disabled = true;
+    
+    try {
+        // Reset the game
+        const result = await this.gameManager.resetGameProgress();
+        
+        if (result.success) {
+            // Hide modal
+            this.hideResetConfirmation();
+            
+            // Show success message
+            this.showMessage(result.message);
+            
+            // Refresh the level select screen
+            setTimeout(() => {
+                this.updateLevelSelect();
+            }, 100);
+        } else {
+            this.showError('Failed to reset game. Please try again.');
+        }
+    } catch (error) {
+        console.error('Reset error:', error);
+        this.showError('An error occurred while resetting the game.');
+    } finally {
+        // Restore button state
+        confirmBtn.textContent = originalText;
+        confirmBtn.disabled = false;
+    }
+}
 
   showAuthForms() {
     document.getElementById('guest-section').classList.add('hidden');
