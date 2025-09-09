@@ -825,6 +825,111 @@ body {
     opacity: 1;
   }
 }
+/* Header buttons styling */
+.header-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-text.btn-danger {
+    color: #d32f2f;
+}
+
+.btn-text.btn-danger:hover {
+    color: #b71c1c;
+    background: rgba(211, 47, 47, 0.1);
+}
+
+/* Reset Game Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal.visible {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    max-width: 450px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.reset-warning {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin: 1.5rem 0;
+}
+
+.reset-warning ul {
+    margin: 0.5rem 0 0.5rem 1.5rem;
+}
+
+.reset-warning li {
+    color: #856404;
+    margin: 0.25rem 0;
+}
+
+.reset-warning strong {
+    color: #d32f2f;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.modal-actions button {
+    flex: 1;
+}
+
+.btn-danger {
+    background: #d32f2f;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #b71c1c;
+    transform: translateY(-2px);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
@@ -861,6 +966,25 @@ body {
   .completion-stats {
     grid-template-columns: 1fr;
   }
+
+  .modal-content {
+        width: 95%;
+        padding: 1.5rem;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .header-buttons {
+        gap: 0.25rem;
+    }
+    
+    .header-buttons .btn-text {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+    }
+  
 }
 
 /* Add these CSS updates to your style.css file */
