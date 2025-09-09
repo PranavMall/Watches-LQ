@@ -69,8 +69,32 @@
         <span id="total-score">185 pts</span>
     </div>
     <h2>Select Difficulty</h2>
-    <button id="logout-btn" class="btn btn-text">← Back</button>
+    <div class="header-buttons">
+        <button id="reset-game-btn" class="btn btn-text btn-danger">🔄 Reset</button>
+        <button id="logout-btn" class="btn btn-text">← Back</button>
+    </div>
 </header>
+
+<!-- Add this modal at the end of the level-select-screen div -->
+<div id="reset-confirmation-modal" class="modal hidden">
+    <div class="modal-content">
+        <h3>⚠️ Reset Game Progress</h3>
+        <p>Are you sure you want to reset your game?</p>
+        <div class="reset-warning">
+            <p>This will:</p>
+            <ul>
+                <li>Clear all completed levels</li>
+                <li>Reset your score to 100 points</li>
+                <li>Remove all progress in all difficulties</li>
+            </ul>
+            <p><strong>This action cannot be undone!</strong></p>
+        </div>
+        <div class="modal-actions">
+            <button id="confirm-reset-btn" class="btn btn-danger">Yes, Reset Everything</button>
+            <button id="cancel-reset-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
             
             <div class="difficulty-levels">
                 <div class="difficulty-card" data-level="easy">
