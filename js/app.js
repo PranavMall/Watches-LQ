@@ -1,11 +1,14 @@
-// js/app.js - Fixed with Level Grid and iOS Navigation
+// js/app.js - Fixed iOS Level Completion Issue
 class App {
   constructor() {
     this.authManager = null;
     this.gameManager = null;
     this.currentScreen = 'loading';
     this.isInitialized = false;
-    this.currentDifficultyView = null; // Track which difficulty grid we're viewing
+    this.currentDifficultyView = null;
+    
+    // iOS detection
+    this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
     this.init();
   }
@@ -177,7 +180,6 @@ class App {
     const backToLevelsBtn = document.getElementById('back-to-levels');
     if (backToLevelsBtn) {
       backToLevelsBtn.addEventListener('click', () => {
-        // Clean up timer when leaving game screen
         if (this.gameManager) {
           this.gameManager.stopTimer();
         }
@@ -218,25 +220,59 @@ class App {
       this.gameManager.stopTimer();
     }
     
-    document.querySelectorAll('.screen').forEach(screen => {
-      screen.classList.remove('active');
-    });
+    // iOS-specific screen switching
+    if (this.isIOS) {
+      // Force layout recalculation on iOS
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.style.display = 'none';
+        screen.classList.remove('active');
+      });
 
-    const targetScreen = document.getElementById(`${screenId}-screen`);
-    if (targetScreen) {
-      // Use setTimeout for iOS smooth transition
-      setTimeout(() => {
-        targetScreen.classList.add('active');
-        this.currentScreen = screenId;
+      const targetScreen = document.getElementById(`${screenId}-screen`);
+      if (targetScreen) {
+        // Force a reflow/repaint on iOS
+        targetScreen.style.display = 'block';
+        targetScreen.offsetHeight; // Force reflow
+        
+        // Use RAF for smoother transition on iOS
+        requestAnimationFrame(() => {
+          targetScreen.classList.add('active');
+          this.currentScreen = screenId;
 
-        if (screenId === 'level-select') {
-          this.updateLevelSelect();
-        } else if (screenId === 'level-grid') {
-          this.updateLevelGrid();
-        }
-      }, 10);
+          if (screenId === 'level-select') {
+            this.updateLevelSelect();
+          } else if (screenId === 'level-grid') {
+            this.updateLevelGrid();
+          }
+          
+          // Scroll to top on iOS
+          if (this.isIOS) {
+            window.scrollTo(0, 0);
+            targetScreen.scrollTop = 0;
+          }
+        });
+      } else {
+        console.error('Screen not found:', screenId);
+      }
     } else {
-      console.error('Screen not found:', screenId);
+      // Standard screen switching for non-iOS
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+      });
+
+      const targetScreen = document.getElementById(`${screenId}-screen`);
+      if (targetScreen) {
+        setTimeout(() => {
+          targetScreen.classList.add('active');
+          this.currentScreen = screenId;
+
+          if (screenId === 'level-select') {
+            this.updateLevelSelect();
+          } else if (screenId === 'level-grid') {
+            this.updateLevelGrid();
+          }
+        }, 10);
+      }
     }
   }
 
@@ -385,7 +421,6 @@ class App {
     const levels = this.gameManager.gameData[difficulty] || [];
     const progress = this.gameManager.getDifficultyProgress(difficulty);
     
-    // Update header
     document.getElementById('grid-difficulty-name').textContent = 
       difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
     
@@ -393,11 +428,9 @@ class App {
     document.getElementById('grid-completed-count').textContent = completedCount;
     document.getElementById('grid-total-count').textContent = levels.length;
     
-    // Calculate total score for this difficulty
     const difficultyScore = (progress.scores || []).reduce((sum, score) => sum + (score || 0), 0);
     document.getElementById('grid-difficulty-score').textContent = difficultyScore;
     
-    // Create level tiles
     const container = document.getElementById('levels-grid-container');
     container.innerHTML = '';
     
@@ -444,7 +477,6 @@ class App {
 
   showGameScreen() {
     this.showScreen('game');
-    // Use requestAnimationFrame for smoother iOS rendering
     requestAnimationFrame(() => {
       this.updateGameScreen();
     });
@@ -553,10 +585,9 @@ class App {
       this.updateActionButtons();
       
       if (result.complete) {
-        // Fix for iOS: Use setTimeout to ensure state is saved before screen transition
-        setTimeout(async () => {
-          await this.handleLevelComplete();
-        }, 100);
+        // FIX FOR iOS: Don't use async/await pattern, handle completion synchronously
+        console.log('Level complete detected');
+        this.handleLevelCompleteIOS();
       }
     } else {
       button.style.opacity = '0.3';
@@ -582,6 +613,59 @@ class App {
       }
       
       document.getElementById('current-score').textContent = `${this.gameManager.getTotalScore()} pts`;
+    }
+  }
+
+  // NEW METHOD: iOS-specific level completion handler
+  handleLevelCompleteIOS() {
+    console.log('iOS level completion handler');
+    
+    // Complete the level synchronously (don't await)
+    try {
+      // Save progress synchronously
+      const stats = this.gameManager.completeLevelSync();
+      
+      // Small delay to ensure state is saved
+      setTimeout(() => {
+        console.log('Showing level complete screen');
+        this.showLevelComplete(stats);
+      }, 200);
+      
+    } catch (error) {
+      console.error('Error in iOS level completion:', error);
+      // Still try to show the completion screen even if saving failed
+      const fallbackStats = {
+        score: this.gameManager.currentScore || 0,
+        levelScore: this.gameManager.levelScore || 0,
+        attempts: this.gameManager.attempts || 0,
+        hintsUsed: this.gameManager.hintsUsed || 0,
+        revealsUsed: this.gameManager.revealsUsed || 0,
+        strikes: this.gameManager.strikes || 0,
+        timeTaken: this.gameManager.timeTaken || 0,
+        totalScore: this.gameManager.totalScore || 0
+      };
+      
+      setTimeout(() => {
+        this.showLevelComplete(fallbackStats);
+      }, 200);
+    }
+  }
+
+  // Original async method (kept for non-iOS devices)
+  async handleLevelComplete() {
+    if (this.isIOS) {
+      this.handleLevelCompleteIOS();
+      return;
+    }
+    
+    try {
+      const stats = await this.gameManager.completeLevel();
+      requestAnimationFrame(() => {
+        this.showLevelComplete(stats);
+      });
+    } catch (error) {
+      console.error('Error completing level:', error);
+      this.showError('Error saving level progress');
     }
   }
 
@@ -642,20 +726,9 @@ class App {
     });
   }
 
-  async handleLevelComplete() {
-    try {
-      const stats = await this.gameManager.completeLevel();
-      // Use requestAnimationFrame for smooth iOS transition
-      requestAnimationFrame(() => {
-        this.showLevelComplete(stats);
-      });
-    } catch (error) {
-      console.error('Error completing level:', error);
-      this.showError('Error saving level progress');
-    }
-  }
-
   showLevelComplete(stats) {
+    console.log('showLevelComplete called with stats:', stats);
+    
     const brand = this.gameManager.getCurrentBrand();
 
     document.getElementById('completed-logo').src = brand.image;
@@ -746,9 +819,14 @@ class App {
       this.updateActionButtons();
       
       if (result.complete) {
-        setTimeout(async () => {
-          await this.handleLevelComplete();
-        }, 100);
+        // Use iOS-specific handler for reveal completion too
+        if (this.isIOS) {
+          this.handleLevelCompleteIOS();
+        } else {
+          setTimeout(async () => {
+            await this.handleLevelComplete();
+          }, 100);
+        }
       }
     } else {
       this.showError(result.message);
