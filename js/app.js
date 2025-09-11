@@ -1,8 +1,9 @@
-// js/app.js - Fixed iOS Level Completion Issue
+// js/app.js - Complete Version with Leaderboard Integration
 class App {
   constructor() {
     this.authManager = null;
     this.gameManager = null;
+    this.leaderboardManager = null;
     this.currentScreen = 'loading';
     this.isInitialized = false;
     this.currentDifficultyView = null;
@@ -51,6 +52,9 @@ class App {
 
       this.authManager = new AuthManager();
       this.gameManager = new GameManager(this.authManager);
+      
+      // Initialize leaderboard manager
+      this.leaderboardManager = new LeaderboardManager(this.authManager, this.gameManager);
 
       this.updateLoadingStatus('Loading game data...');
 
@@ -103,6 +107,9 @@ class App {
     }
     if (!this.gameManager) {
       this.gameManager = new GameManager(this.authManager);
+    }
+    if (!this.leaderboardManager) {
+      this.leaderboardManager = new LeaderboardManager(this.authManager, this.gameManager);
     }
     
     this.setupEventListeners();
@@ -186,30 +193,31 @@ class App {
         this.showLevelGrid(this.currentDifficultyView);
       });
     }
-     // Reset game listeners
+    
+    // Reset game listeners
     const resetGameBtn = document.getElementById('reset-game-btn');
     if (resetGameBtn) {
-        resetGameBtn.addEventListener('click', () => this.showResetConfirmation());
+      resetGameBtn.addEventListener('click', () => this.showResetConfirmation());
     }
     
     const confirmResetBtn = document.getElementById('confirm-reset-btn');
     if (confirmResetBtn) {
-        confirmResetBtn.addEventListener('click', () => this.handleResetGame());
+      confirmResetBtn.addEventListener('click', () => this.handleResetGame());
     }
     
     const cancelResetBtn = document.getElementById('cancel-reset-btn');
     if (cancelResetBtn) {
-        cancelResetBtn.addEventListener('click', () => this.hideResetConfirmation());
+      cancelResetBtn.addEventListener('click', () => this.hideResetConfirmation());
     }
     
     // Close modal on background click
     const resetModal = document.getElementById('reset-confirmation-modal');
     if (resetModal) {
-        resetModal.addEventListener('click', (e) => {
-            if (e.target === resetModal) {
-                this.hideResetConfirmation();
-            }
-        });
+      resetModal.addEventListener('click', (e) => {
+        if (e.target === resetModal) {
+          this.hideResetConfirmation();
+        }
+      });
     }
 
     const backToLevelsCompleteBtn = document.getElementById('back-to-levels-complete');
@@ -231,6 +239,46 @@ class App {
     const nextLevelBtn = document.getElementById('next-level-btn');
     if (nextLevelBtn) {
       nextLevelBtn.addEventListener('click', () => this.handleNextLevel());
+    }
+
+    // Leaderboard navigation listeners
+    const showLeaderboardBtn = document.getElementById('show-leaderboard');
+    if (showLeaderboardBtn) {
+      showLeaderboardBtn.addEventListener('click', () => this.showLeaderboard());
+    }
+    
+    const backFromLeaderboardBtn = document.getElementById('back-from-leaderboard');
+    if (backFromLeaderboardBtn) {
+      backFromLeaderboardBtn.addEventListener('click', () => this.showLevelSelect());
+    }
+    
+    // Leaderboard tabs
+    document.querySelectorAll('.leaderboard-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const timeframe = tab.dataset.timeframe;
+        this.switchLeaderboardTimeframe(timeframe);
+      });
+    });
+    
+    // Refresh leaderboard button
+    const refreshBtn = document.getElementById('refresh-leaderboard');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.refreshLeaderboard());
+    }
+    
+    // Share rank button
+    const shareBtn = document.getElementById('share-rank');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', () => this.shareRank());
+    }
+    
+    // Register from leaderboard
+    const registerLink = document.getElementById('register-from-leaderboard');
+    if (registerLink) {
+      registerLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showRegisterFromLeaderboard();
+      });
     }
 
     // Game over listeners
@@ -301,27 +349,25 @@ class App {
     }
   }
 
-  // Add these methods to the App class
-
-showResetConfirmation() {
+  showResetConfirmation() {
     const modal = document.getElementById('reset-confirmation-modal');
     if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('visible');
+      modal.classList.remove('hidden');
+      modal.classList.add('visible');
     }
-}
+  }
 
-hideResetConfirmation() {
+  hideResetConfirmation() {
     const modal = document.getElementById('reset-confirmation-modal');
     if (modal) {
-        modal.classList.remove('visible');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 300);
+      modal.classList.remove('visible');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 300);
     }
-}
+  }
 
-async handleResetGame() {
+  async handleResetGame() {
     console.log('Handling game reset...');
     
     // Show loading state
@@ -331,32 +377,32 @@ async handleResetGame() {
     confirmBtn.disabled = true;
     
     try {
-        // Reset the game
-        const result = await this.gameManager.resetGameProgress();
+      // Reset the game
+      const result = await this.gameManager.resetGameProgress();
+      
+      if (result.success) {
+        // Hide modal
+        this.hideResetConfirmation();
         
-        if (result.success) {
-            // Hide modal
-            this.hideResetConfirmation();
-            
-            // Show success message
-            this.showMessage(result.message);
-            
-            // Refresh the level select screen
-            setTimeout(() => {
-                this.updateLevelSelect();
-            }, 100);
-        } else {
-            this.showError('Failed to reset game. Please try again.');
-        }
+        // Show success message
+        this.showMessage(result.message);
+        
+        // Refresh the level select screen
+        setTimeout(() => {
+          this.updateLevelSelect();
+        }, 100);
+      } else {
+        this.showError('Failed to reset game. Please try again.');
+      }
     } catch (error) {
-        console.error('Reset error:', error);
-        this.showError('An error occurred while resetting the game.');
+      console.error('Reset error:', error);
+      this.showError('An error occurred while resetting the game.');
     } finally {
-        // Restore button state
-        confirmBtn.textContent = originalText;
-        confirmBtn.disabled = false;
+      // Restore button state
+      confirmBtn.textContent = originalText;
+      confirmBtn.disabled = false;
     }
-}
+  }
 
   showAuthForms() {
     document.getElementById('guest-section').classList.add('hidden');
@@ -382,6 +428,10 @@ async handleResetGame() {
     console.log('Playing as guest...');
     const result = await this.authManager.playAsGuest();
     if (result.success) {
+      // Initialize guest session in leaderboard
+      if (this.leaderboardManager) {
+        await this.leaderboardManager.initializeSession();
+      }
       this.showScreen('level-select');
     }
   }
@@ -398,6 +448,10 @@ async handleResetGame() {
     const result = await this.authManager.loginWithEmail(email, password);
     
     if (result.success) {
+      // Initialize user session in leaderboard
+      if (this.leaderboardManager) {
+        await this.leaderboardManager.initializeSession();
+      }
       this.showScreen('level-select');
     } else {
       this.showError(result.error || 'Login failed');
@@ -422,6 +476,30 @@ async handleResetGame() {
     const result = await this.authManager.registerWithEmail(email, password, name);
     
     if (result.success) {
+      // Check for guest progress
+      const guestProgressStr = localStorage.getItem('watches_lq_guest_progress');
+      if (guestProgressStr) {
+        try {
+          const guestProgress = JSON.parse(guestProgressStr);
+          
+          // Merge guest progress with new user
+          this.gameManager.userProgress = guestProgress.progress;
+          this.gameManager.totalScore = guestProgress.score;
+          await this.gameManager.saveProgress();
+          
+          // Convert guest leaderboard entry to user
+          if (this.leaderboardManager && result.user) {
+            await this.leaderboardManager.convertGuestToUser(result.user.id);
+          }
+          
+          localStorage.removeItem('watches_lq_guest_progress');
+          
+          this.showMessage('Account created! Your guest progress has been saved.');
+        } catch (error) {
+          console.error('Failed to transfer guest progress:', error);
+        }
+      }
+      
       if (result.requiresConfirmation) {
         this.showMessage('Please check your email to confirm your account');
       } else {
@@ -480,6 +558,261 @@ async handleResetGame() {
         }
       }
     });
+
+    // Update leaderboard preview
+    this.updateLeaderboardPreview();
+  }
+
+  async updateLeaderboardPreview() {
+    if (!this.leaderboardManager) return;
+    
+    try {
+      // Fetch top 5 for preview
+      const topPlayers = await this.leaderboardManager.fetchLeaderboard('all', 5);
+      
+      const previewContainer = document.getElementById('leaderboard-preview');
+      if (!previewContainer) return;
+      
+      if (topPlayers.length === 0) {
+        previewContainer.innerHTML = `
+          <div class="leaderboard-preview-header">
+            <h3>🏆 Leaderboard</h3>
+          </div>
+          <div class="empty-state" style="padding: 2rem;">
+            <p style="color: var(--text-secondary);">No rankings yet. Be the first!</p>
+          </div>
+        `;
+      } else {
+        previewContainer.innerHTML = `
+          <div class="leaderboard-preview-header">
+            <h3>🏆 Top Players</h3>
+            <button class="btn btn-text" onclick="window.app.showLeaderboard()">View All →</button>
+          </div>
+          <div class="preview-list">
+            ${topPlayers.map(entry => `
+              <div class="preview-entry">
+                <span class="rank">${this.leaderboardManager.getMedalEmoji(entry.rank)} ${entry.rank}</span>
+                <span class="name">${entry.display_name}${entry.is_guest ? ' (Guest)' : ''}</span>
+                <span class="score">${entry.total_score} pts</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error('Failed to update leaderboard preview:', error);
+    }
+  }
+
+  async showLeaderboard() {
+    this.showScreen('leaderboard');
+    
+    // Show loading state
+    document.getElementById('leaderboard-loading').classList.remove('hidden');
+    document.getElementById('leaderboard-list').innerHTML = '';
+    document.getElementById('leaderboard-empty').classList.add('hidden');
+    
+    // Update user score in header
+    const userScore = this.gameManager.getTotalScore();
+    document.getElementById('leaderboard-user-score').textContent = `${userScore} pts`;
+    
+    // Show guest notice if applicable
+    const guestNotice = document.getElementById('guest-notice');
+    if (this.authManager.isGuestUser()) {
+      guestNotice.classList.remove('hidden');
+    } else {
+      guestNotice.classList.add('hidden');
+    }
+    
+    // Load leaderboard data
+    await this.loadLeaderboardData('all');
+    
+    // Update stats
+    await this.updateLeaderboardStats();
+  }
+
+  async loadLeaderboardData(timeframe) {
+    if (!this.leaderboardManager) return;
+    
+    try {
+      // Update active tab
+      document.querySelectorAll('.leaderboard-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.timeframe === timeframe) {
+          tab.classList.add('active');
+        }
+      });
+      
+      // Fetch leaderboard
+      const entries = await this.leaderboardManager.fetchLeaderboard(timeframe, 100);
+      
+      // Hide loading
+      document.getElementById('leaderboard-loading').classList.add('hidden');
+      
+      if (entries.length === 0) {
+        document.getElementById('leaderboard-empty').classList.remove('hidden');
+        document.getElementById('leaderboard-list').innerHTML = '';
+        return;
+      }
+      
+      // Get current user info
+      const user = this.authManager.getCurrentUser();
+      const isGuest = this.authManager.isGuestUser();
+      const sessionId = this.leaderboardManager.sessionId;
+      
+      // Display entries
+      const listContainer = document.getElementById('leaderboard-list');
+      listContainer.innerHTML = entries.map(entry => {
+        const isCurrentUser = (isGuest && entry.session_id === sessionId) || 
+                             (!isGuest && user && entry.user_id === user.id);
+        
+        return `
+          <div class="leaderboard-entry ${isCurrentUser ? 'current-user' : ''}">
+            <div class="entry-rank ${entry.rank <= 3 ? 'top-three' : ''}">
+              ${entry.rank <= 3 ? `<span class="entry-medal">${this.leaderboardManager.getMedalEmoji(entry.rank)}</span>` : entry.rank}
+            </div>
+            <div class="entry-info">
+              <div class="entry-name">
+                ${entry.display_name}
+                ${entry.is_guest ? '<span class="guest-badge">Guest</span>' : ''}
+                ${isCurrentUser ? '<span style="color: var(--primary-color); margin-left: 0.5rem;">← You</span>' : ''}
+              </div>
+              <div class="entry-details">
+                ${entry.levels_completed} levels • 
+                Easy: ${entry.easy_completed || 0} • 
+                Medium: ${entry.medium_completed || 0} • 
+                Hard: ${entry.hard_completed || 0}
+              </div>
+            </div>
+            <div class="entry-score">
+              <div class="entry-score-value">${entry.total_score}</div>
+              <div class="entry-score-label">Points</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Update user position card
+      await this.updateUserPosition(timeframe);
+      
+      // Show share button if user has a rank
+      if (this.leaderboardManager.userRank) {
+        document.getElementById('share-rank').classList.remove('hidden');
+      } else {
+        document.getElementById('share-rank').classList.add('hidden');
+      }
+      
+    } catch (error) {
+      console.error('Failed to load leaderboard:', error);
+      document.getElementById('leaderboard-loading').classList.add('hidden');
+      this.showError('Failed to load leaderboard. Please try again.');
+    }
+  }
+
+  async updateUserPosition(timeframe) {
+    const position = await this.leaderboardManager.getUserPosition(timeframe);
+    
+    if (position) {
+      const positionCard = document.getElementById('user-position-card');
+      positionCard.classList.remove('hidden');
+      
+      document.getElementById('user-rank-number').textContent = position.rank;
+      document.getElementById('user-medal').textContent = 
+        position.rank <= 3 ? this.leaderboardManager.getMedalEmoji(position.rank) : '';
+      document.getElementById('user-lb-score').textContent = position.entry.total_score;
+      document.getElementById('user-lb-levels').textContent = position.entry.levels_completed;
+    } else {
+      document.getElementById('user-position-card').classList.add('hidden');
+    }
+  }
+
+  async updateLeaderboardStats() {
+    const stats = await this.leaderboardManager.getLeaderboardStats();
+    
+    if (stats) {
+      document.getElementById('total-players').textContent = stats.totalPlayers || 0;
+      document.getElementById('avg-score').textContent = stats.averageScore || 0;
+      document.getElementById('top-score').textContent = stats.highestScore || 0;
+    }
+  }
+
+  switchLeaderboardTimeframe(timeframe) {
+    this.loadLeaderboardData(timeframe);
+  }
+
+  async refreshLeaderboard() {
+    const activeTab = document.querySelector('.leaderboard-tab.active');
+    const timeframe = activeTab ? activeTab.dataset.timeframe : 'all';
+    
+    // Show loading state
+    document.getElementById('leaderboard-loading').classList.remove('hidden');
+    document.getElementById('leaderboard-list').innerHTML = '';
+    
+    // Reload data
+    await this.loadLeaderboardData(timeframe);
+    await this.updateLeaderboardStats();
+    
+    this.showMessage('Leaderboard refreshed!');
+  }
+
+  shareRank() {
+    const rank = this.leaderboardManager.userRank;
+    const score = this.gameManager.getTotalScore();
+    const totalLevels = this.gameManager.getTotalLevelsCompleted();
+    
+    const shareText = `🏆 I'm ranked #${rank} in Dubai Watch Week Logo Quiz! Score: ${score} pts | Levels: ${totalLevels} completed. Can you beat my score?`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'Dubai Watch Week Logo Quiz',
+        text: shareText,
+        url: window.location.href
+      }).catch(err => console.log('Share cancelled'));
+    } else {
+      // Fallback to clipboard
+      navigator.clipboard.writeText(shareText).then(() => {
+        this.showMessage('Rank copied to clipboard!');
+      }).catch(() => {
+        this.showError('Could not copy to clipboard');
+      });
+    }
+  }
+
+  showRegisterFromLeaderboard() {
+    // Store current guest progress
+    const guestProgress = {
+      score: this.gameManager.getTotalScore(),
+      levels: this.gameManager.getTotalLevelsCompleted(),
+      progress: this.gameManager.userProgress
+    };
+    
+    localStorage.setItem('watches_lq_guest_progress', JSON.stringify(guestProgress));
+    
+    // Show registration form
+    this.showScreen('start');
+    this.showAuthForms();
+    this.showRegisterForm();
+    
+    // Add message about preserving progress
+    const registerForm = document.getElementById('register-form');
+    if (registerForm && !document.getElementById('progress-notice')) {
+      const notice = document.createElement('div');
+      notice.id = 'progress-notice';
+      notice.className = 'alert alert-info';
+      notice.innerHTML = `
+        <strong>🎯 Your progress will be saved!</strong><br>
+        Score: ${guestProgress.score} pts | Levels: ${guestProgress.levels}
+      `;
+      notice.style.cssText = `
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      `;
+      registerForm.insertBefore(notice, registerForm.firstChild);
+    }
   }
 
   handleDifficultySelect(difficulty) {
@@ -667,7 +1000,6 @@ async handleResetGame() {
       this.updateActionButtons();
       
       if (result.complete) {
-        // FIX FOR iOS: Don't use async/await pattern, handle completion synchronously
         console.log('Level complete detected');
         this.handleLevelCompleteIOS();
       }
@@ -698,14 +1030,19 @@ async handleResetGame() {
     }
   }
 
-  // NEW METHOD: iOS-specific level completion handler
   handleLevelCompleteIOS() {
     console.log('iOS level completion handler');
     
-    // Complete the level synchronously (don't await)
     try {
       // Save progress synchronously
       const stats = this.gameManager.completeLevelSync();
+      
+      // Update leaderboard in background
+      setTimeout(() => {
+        if (this.leaderboardManager && this.leaderboardManager.canSubmitToLeaderboard()) {
+          this.leaderboardManager.updateLeaderboardEntry();
+        }
+      }, 300);
       
       // Small delay to ensure state is saved
       setTimeout(() => {
@@ -733,7 +1070,6 @@ async handleResetGame() {
     }
   }
 
-  // Original async method (kept for non-iOS devices)
   async handleLevelComplete() {
     if (this.isIOS) {
       this.handleLevelCompleteIOS();
@@ -742,6 +1078,12 @@ async handleResetGame() {
     
     try {
       const stats = await this.gameManager.completeLevel();
+      
+      // Update leaderboard after level completion
+      if (this.leaderboardManager && this.leaderboardManager.canSubmitToLeaderboard()) {
+        await this.leaderboardManager.updateLeaderboardEntry();
+      }
+      
       requestAnimationFrame(() => {
         this.showLevelComplete(stats);
       });
@@ -901,7 +1243,6 @@ async handleResetGame() {
       this.updateActionButtons();
       
       if (result.complete) {
-        // Use iOS-specific handler for reveal completion too
         if (this.isIOS) {
           this.handleLevelCompleteIOS();
         } else {
