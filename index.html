@@ -128,18 +128,16 @@
                 </div>
             </div>
             
-            <!-- Leaderboard -->
-            <div class="leaderboard-container">
-                <h3>Leaderboard</h3>
-                <div class="leaderboard-tabs">
-                    <button class="leaderboard-tab active" data-timeframe="all">All Time</button>
-                    <button class="leaderboard-tab" data-timeframe="weekly">This Week</button>
-                    <button class="leaderboard-tab" data-timeframe="daily">Today</button>
+            <!-- Add this after the difficulty-levels div in level-select-screen -->
+            <div class="leaderboard-section">
+                <button id="show-leaderboard" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem;">
+                    🏆 View Full Leaderboard
+                    </button>
+                <!-- Leaderboard Preview -->
+                <div id="leaderboard-preview" class="leaderboard-preview">
+                    <!-- Will be populated dynamically -->
+                    </div>
                 </div>
-                <div class="leaderboard-list" id="leaderboard-list">
-                    <!-- Leaderboard items will be loaded here -->
-                </div>
-            </div>
         </div>
     </div>
 
@@ -168,6 +166,96 @@
 
         <div style="text-align: center; margin-top: 2rem;">
             <button id="back-from-grid" class="btn btn-secondary">← Back to Difficulties</button>
+        </div>
+    </div>
+</div>
+    <!-- Leaderboard Screen - Add this after the level-grid-screen div -->
+<div id="leaderboard-screen" class="screen">
+    <div class="container">
+        <!-- Leaderboard Header -->
+        <div class="leaderboard-header">
+            <div class="header-top">
+                <button id="back-from-leaderboard" class="btn btn-text">← Back</button>
+                <h1>🏆 Leaderboard</h1>
+                <div class="user-score-badge">
+                    <span id="leaderboard-user-score">0 pts</span>
+                </div>
+            </div>
+            
+            <!-- User Position Card -->
+            <div id="user-position-card" class="user-position-card hidden">
+                <div class="position-content">
+                    <div class="rank-display">
+                        <span class="rank-number">#<span id="user-rank-number">--</span></span>
+                        <span class="rank-medal" id="user-medal"></span>
+                    </div>
+                    <div class="user-stats">
+                        <div class="stat-item">
+                            <span class="label">Your Score</span>
+                            <span class="value" id="user-lb-score">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="label">Levels</span>
+                            <span class="value" id="user-lb-levels">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeframe Tabs -->
+        <div class="leaderboard-tabs">
+            <button class="leaderboard-tab active" data-timeframe="all">All Time</button>
+            <button class="leaderboard-tab" data-timeframe="weekly">This Week</button>
+            <button class="leaderboard-tab" data-timeframe="daily">Today</button>
+        </div>
+
+        <!-- Leaderboard Stats -->
+        <div class="leaderboard-stats">
+            <div class="stat">
+                <span class="stat-label">Total Players</span>
+                <span class="stat-value" id="total-players">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Avg Score</span>
+                <span class="stat-value" id="avg-score">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Top Score</span>
+                <span class="stat-value" id="top-score">0</span>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="leaderboard-loading" class="loading-container hidden">
+            <div class="spinner"></div>
+            <p>Loading rankings...</p>
+        </div>
+
+        <!-- Leaderboard List -->
+        <div class="leaderboard-list" id="leaderboard-list">
+            <!-- Entries will be dynamically added here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="leaderboard-empty" class="empty-state hidden">
+            <div class="empty-icon">🏆</div>
+            <h3>No Rankings Yet</h3>
+            <p>Be the first to complete a level and appear on the leaderboard!</p>
+        </div>
+
+        <!-- Guest Notice -->
+        <div id="guest-notice" class="guest-notice hidden">
+            <div class="notice-content">
+                <p>👤 Playing as Guest</p>
+                <p>Your scores are being tracked! <a href="#" id="register-from-leaderboard">Register</a> to save your progress permanently.</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="leaderboard-actions">
+            <button id="refresh-leaderboard" class="btn btn-secondary">🔄 Refresh</button>
+            <button id="share-rank" class="btn btn-primary hidden">📤 Share My Rank</button>
         </div>
     </div>
 </div>
