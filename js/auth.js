@@ -7,8 +7,14 @@ class AuthManager {
 
   async initializeAuth() {
     try {
+      // Check if Supabase client exists
+      if (!window.supabaseClient) {
+        console.warn('Supabase client not available, skipping auth initialization');
+        return;
+      }
+
       // Check for existing session
-      const { data: { session }, error } = await window.supabase.auth.getSession();
+      const { data: { session }, error } = await window.supabaseClient.auth.getSession();
       
       if (error) {
         console.error('Auth session error:', error);
@@ -26,7 +32,12 @@ class AuthManager {
 
   async loginWithEmail(email, password) {
     try {
-      const { data, error } = await window.supabase.auth.signInWithPassword({
+      // Check if Supabase is available
+      if (!window.supabaseClient) {
+        throw new Error('Authentication service not available. Please try guest mode.');
+      }
+
+      const { data, error } = await window.supabaseClient.auth.signInWithPassword({
         email,
         password
       });
@@ -44,7 +55,12 @@ class AuthManager {
 
   async registerWithEmail(email, password, displayName) {
     try {
-      const { data, error } = await window.supabase.auth.signUp({
+      // Check if Supabase is available
+      if (!window.supabaseClient) {
+        throw new Error('Registration service not available. Please try guest mode.');
+      }
+
+      const { data, error } = await window.supabaseClient.auth.signUp({
         email,
         password,
         options: {
@@ -70,7 +86,12 @@ class AuthManager {
 
   async createUserProfile(userId, displayName, email) {
     try {
-      const { error } = await window.supabase
+      if (!window.supabaseClient) {
+        console.warn('Supabase not available for profile creation');
+        return;
+      }
+
+      const { error } = await window.supabaseClient
         .from('user_profiles')
         .insert([
           {
@@ -89,10 +110,10 @@ class AuthManager {
   }
 
   async loadUserProfile() {
-    if (!this.currentUser) return null;
+    if (!this.currentUser || !window.supabaseClient) return null;
 
     try {
-      const { data, error } = await window.supabase
+      const { data, error } = await window.supabaseClient
         .from('user_profiles')
         .select('*')
         .eq('id', this.currentUser.id)
@@ -127,6 +148,9 @@ class AuthManager {
       email: 'guest@local',
       user_metadata: { display_name: 'Guest' }
     };
+    
+    // Guest mode always succeeds
+    console.log('Playing as guest user');
     return { success: true };
   }
 
@@ -138,14 +162,18 @@ class AuthManager {
     }
 
     try {
-      const { error } = await window.supabase.auth.signOut();
-      if (error) throw error;
+      if (window.supabaseClient) {
+        const { error } = await window.supabaseClient.auth.signOut();
+        if (error) throw error;
+      }
 
       this.currentUser = null;
       return { success: true };
     } catch (error) {
       console.error('Logout error:', error);
-      return { success: false, error: error.message };
+      // Still log out locally even if Supabase fails
+      this.currentUser = null;
+      return { success: true };
     }
   }
 
