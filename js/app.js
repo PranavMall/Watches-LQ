@@ -14,61 +14,54 @@ class App {
     this.init();
   }
 
-  async init() {
+async init() {
     try {
       console.log('App init started...');
       
-      this.updateLoadingStatus('Initializing Supabase...');
+      this.updateLoadingStatus('Initializing...');
       
-      const supabaseInit = new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (typeof window.supabase !== 'undefined') {
-            try {
-              window.supabaseClient = window.supabase.createClient(
-                SUPABASE_CONFIG.url, 
-                SUPABASE_CONFIG.anonKey
-              );
-              console.log('Supabase initialized successfully');
-              resolve();
-            } catch (error) {
-              console.error('Supabase init error:', error);
-              reject(error);
-            }
-          } else {
-            console.warn('Supabase not available, continuing without it');
-            resolve();
-          }
-        }, 100);
-      });
-
-      await Promise.race([
-        supabaseInit,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase timeout')), 3000))
-      ]).catch(err => {
-        console.warn('Supabase initialization failed, continuing offline:', err);
-      });
+      // Try to initialize Supabase but don't fail if it doesn't work
+      try {
+        // Check if Supabase is loaded from CDN
+        if (typeof supabase !== 'undefined') {
+          window.supabaseClient = supabase.createClient(
+            SUPABASE_CONFIG.url, 
+            SUPABASE_CONFIG.anonKey
+          );
+          console.log('Supabase initialized successfully');
+        } else {
+          console.warn('Supabase not loaded, continuing in offline mode');
+        }
+      } catch (supabaseError) {
+        console.warn('Supabase initialization failed, continuing offline:', supabaseError);
+      }
 
       this.updateLoadingStatus('Loading game managers...');
 
+      // Initialize managers (they will work even without Supabase)
       this.authManager = new AuthManager();
       this.gameManager = new GameManager(this.authManager);
-      
-      // Initialize leaderboard manager
       this.leaderboardManager = new LeaderboardManager(this.authManager, this.gameManager);
 
       this.updateLoadingStatus('Loading game data...');
 
-      await Promise.race([
-        this.gameManager.loadGameData(),
-        new Promise((resolve) => setTimeout(() => {
-          console.warn('Game data loading timeout, using defaults');
-          resolve();
-        }, 3000))
-      ]);
+      // Load game data with timeout fallback
+      try {
+        await Promise.race([
+          this.gameManager.loadGameData(),
+          new Promise((resolve) => setTimeout(() => {
+            console.warn('Game data loading timeout, using defaults');
+            resolve();
+          }, 3000))
+        ]);
+      } catch (error) {
+        console.warn('Error loading game data, using defaults:', error);
+      }
 
+      // Try to register service worker but don't fail if it doesn't work
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(err => 
-          console.warn('Service worker registration failed:', err)
+          console.warn('Service worker registration failed (this is okay):', err)
         );
       }
 
@@ -78,6 +71,7 @@ class App {
 
       this.isInitialized = true;
 
+      // Show start screen after a short delay
       setTimeout(() => {
         console.log('Showing start screen...');
         this.showScreen('start');
