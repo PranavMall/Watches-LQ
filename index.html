@@ -392,52 +392,43 @@
         </div>
     </div>
 
-<!-- Replace the script section at the bottom of your index.html with this -->
+<!-- Replace ALL script tags at the bottom of index.html with this simpler version -->
 
-<!-- Scripts - CORRECT ORDER IS CRITICAL -->
-<!-- 1. Load Supabase FIRST -->
+<!-- Load Supabase FIRST and WAIT for it -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- 2. Wait for Supabase and verify it loaded -->
+<!-- Small delay to ensure Supabase is ready, then load everything else -->
 <script>
-    // Verify Supabase loaded
-    if (typeof supabase === 'undefined') {
-        console.error('⚠️ Supabase CDN failed to load!');
-        // Try alternative CDN
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/@supabase/supabase-js@2';
-        document.head.appendChild(script);
-    } else {
-        console.log('✓ Supabase library loaded successfully');
-    }
-</script>
-
-<!-- 3. Load your config -->
-<script src="js/config.js"></script>
-
-<!-- 4. Immediately create client after config loads -->
-<script>
-    // Create Supabase client immediately after config loads
-    if (typeof supabase !== 'undefined' && typeof SUPABASE_CONFIG !== 'undefined') {
-        try {
-            window.supabaseClient = supabase.createClient(
-                SUPABASE_CONFIG.url,
-                SUPABASE_CONFIG.anonKey
-            );
-            console.log('✓ Supabase client created in index.html');
-        } catch (e) {
-            console.error('Failed to create client in index.html:', e);
+    // Give Supabase a moment to initialize
+    function loadApp() {
+        // Check if Supabase loaded
+        if (typeof supabase !== 'undefined') {
+            console.log('✅ Supabase library is loaded, loading app files...');
+        } else {
+            console.error('❌ Supabase failed to load from CDN');
         }
+        
+        // Load all app files in order
+        const scripts = [
+            'js/config.js',    // This will create supabaseClient
+            'js/auth.js',
+            'js/game.js', 
+            'js/leaderboard.js',
+            'js/app.js'
+        ];
+        
+        scripts.forEach(src => {
+            const script = document.createElement('script');
+            script.src = src;
+            document.body.appendChild(script);
+        });
     }
+    
+    // Wait 100ms for Supabase to fully initialize, then load app
+    setTimeout(loadApp, 100);
 </script>
 
-<!-- 5. Load your app files -->
-<script src="js/auth.js"></script>
-<script src="js/game.js"></script>
-<script src="js/leaderboard.js"></script>
-<script src="js/app.js"></script>
-
-<!-- 6. Timer update listener -->
+<!-- Timer update listener -->
 <script>
     window.addEventListener('timer-update', (e) => {
         const time = e.detail.time;
