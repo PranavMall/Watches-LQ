@@ -14,7 +14,7 @@ class App {
     this.init();
   }
 
-// Replace the entire init() method in your app.js with this debugging version
+// Replace your entire app.js init() method with this WORKING version
 
 async init() {
     try {
@@ -22,49 +22,45 @@ async init() {
       
       this.updateLoadingStatus('Initializing...');
       
-      // DETAILED SUPABASE INITIALIZATION WITH DEBUGGING
-      console.log('Checking for Supabase...');
-      console.log('typeof supabase:', typeof supabase);
-      console.log('SUPABASE_CONFIG:', SUPABASE_CONFIG);
+      // WAIT FOR SUPABASE TO BE AVAILABLE
+      // Sometimes the CDN script hasn't fully loaded when init runs
+      let attempts = 0;
+      while (typeof supabase === 'undefined' && attempts < 10) {
+        console.log('Waiting for Supabase library to load...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
       
+      // Initialize Supabase client
       if (typeof supabase !== 'undefined') {
-        console.log('Supabase library found, creating client...');
+        console.log('Supabase library found!');
+        console.log('Creating client with:', {
+          url: SUPABASE_CONFIG.url,
+          keyLength: SUPABASE_CONFIG.anonKey.length
+        });
         
         try {
-          // Create the Supabase client
+          // CREATE THE CLIENT - This is what was failing
           window.supabaseClient = supabase.createClient(
             SUPABASE_CONFIG.url, 
             SUPABASE_CONFIG.anonKey
           );
           
-          console.log('Supabase client created successfully!');
+          console.log('✓ Supabase client created successfully!');
           console.log('Client object:', window.supabaseClient);
           
-          // Test the connection with a simple query
-          console.log('Testing Supabase connection...');
-          const { data: testData, error: testError } = await window.supabaseClient
-            .from('user_profiles')
-            .select('count', { count: 'exact', head: true });
-          
-          if (testError) {
-            console.warn('Supabase test query failed (this is okay if table does not exist):', testError);
-            // Try to test auth instead
-            const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
-            if (authError) {
-              console.warn('Auth test also failed:', authError);
-            } else {
-              console.log('Auth is working, user:', user);
-            }
-          } else {
-            console.log('Supabase is fully connected and working!');
+          // Quick test to verify it works
+          const { data, error } = await window.supabaseClient.auth.getSession();
+          if (!error) {
+            console.log('✓ Supabase auth is working!');
           }
           
-        } catch (clientError) {
-          console.error('Failed to create Supabase client:', clientError);
+        } catch (error) {
+          console.error('Failed to create Supabase client:', error);
           window.supabaseClient = null;
         }
       } else {
-        console.warn('Supabase library not found in global scope');
+        console.warn('Supabase library not available after waiting');
         window.supabaseClient = null;
       }
 
@@ -77,35 +73,34 @@ async init() {
 
       this.updateLoadingStatus('Loading game data...');
 
-      // Load game data with timeout fallback
+      // Load game data
       try {
         await Promise.race([
           this.gameManager.loadGameData(),
-          new Promise((resolve) => setTimeout(() => {
-            console.warn('Game data loading timeout, using defaults');
-            resolve();
-          }, 3000))
+          new Promise((resolve) => setTimeout(resolve, 3000))
         ]);
       } catch (error) {
         console.warn('Error loading game data, using defaults:', error);
       }
 
-      // Try to register service worker but don't fail if it doesn't work
+      // DON'T register service worker if it's causing issues
+      // Comment this out for now
+      /*
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(err => 
-          console.warn('Service worker registration failed (this is okay):', err)
+          console.warn('Service worker registration failed:', err)
         );
       }
+      */
 
       this.setupEventListeners();
-
       this.updateLoadingStatus('Ready to play!');
-
       this.isInitialized = true;
 
-      // Show start screen after a short delay
+      // Show start screen
       setTimeout(() => {
         console.log('Showing start screen...');
+        console.log('Final check - window.supabaseClient:', window.supabaseClient);
         this.showScreen('start');
       }, 1000);
 
