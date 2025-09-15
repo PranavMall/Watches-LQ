@@ -79,8 +79,9 @@ class LeaderboardManager {
     }
   }
 
-  // Update leaderboard entry
-  async updateLeaderboardEntry() {
+ // Replace the updateLeaderboardEntry method in leaderboard.js with this fixed version
+
+async updateLeaderboardEntry() {
     if (!window.supabaseClient) {
       console.warn('Supabase not available, skipping leaderboard update');
       return;
@@ -110,35 +111,80 @@ class LeaderboardManager {
         medium_completed: mediumCompleted,
         hard_completed: hardCompleted,
         is_guest: isGuest,
-        country_code: countryCode
+        country_code: countryCode,
+        updated_at: new Date().toISOString()
       };
 
-      // Check if entry exists
-      const { data: existingEntry } = await window.supabaseClient
-        .from('leaderboard_entries')
-        .select('*')
-        .or(`user_id.eq.${user?.id || 'null'},session_id.eq.${this.sessionId}`)
-        .single();
+      console.log('Updating leaderboard with:', entryData);
 
-      if (existingEntry) {
-        // Update existing entry only if score is higher
-        if (entryData.total_score > existingEntry.total_score) {
-          await window.supabaseClient
+      // For guests, use session_id as unique identifier
+      if (isGuest) {
+        // Check if guest entry exists
+        const { data: existingEntry } = await window.supabaseClient
+          .from('leaderboard_entries')
+          .select('*')
+          .eq('session_id', this.sessionId)
+          .single();
+
+        if (existingEntry) {
+          // Update existing guest entry
+          const { error } = await window.supabaseClient
             .from('leaderboard_entries')
-            .update({
-              ...entryData,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingEntry.id);
+            .update(entryData)
+            .eq('session_id', this.sessionId);
+
+          if (error) {
+            console.error('Failed to update guest leaderboard entry:', error);
+          } else {
+            console.log('Guest leaderboard entry updated successfully');
+          }
+        } else {
+          // Create new guest entry
+          const { error } = await window.supabaseClient
+            .from('leaderboard_entries')
+            .insert([entryData]);
+
+          if (error) {
+            console.error('Failed to create guest leaderboard entry:', error);
+          } else {
+            console.log('Guest leaderboard entry created successfully');
+          }
         }
       } else {
-        // Create new entry
-        await window.supabaseClient
+        // For registered users, use user_id as unique identifier
+        const { data: existingEntry } = await window.supabaseClient
           .from('leaderboard_entries')
-          .insert([entryData]);
-      }
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
-      console.log('Leaderboard updated successfully');
+        if (existingEntry) {
+          // Update existing user entry only if score is higher
+          if (entryData.total_score >= existingEntry.total_score) {
+            const { error } = await window.supabaseClient
+              .from('leaderboard_entries')
+              .update(entryData)
+              .eq('user_id', user.id);
+
+            if (error) {
+              console.error('Failed to update user leaderboard entry:', error);
+            } else {
+              console.log('User leaderboard entry updated successfully');
+            }
+          }
+        } else {
+          // Create new user entry
+          const { error } = await window.supabaseClient
+            .from('leaderboard_entries')
+            .insert([entryData]);
+
+          if (error) {
+            console.error('Failed to create user leaderboard entry:', error);
+          } else {
+            console.log('User leaderboard entry created successfully');
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to update leaderboard:', error);
     }
@@ -277,21 +323,49 @@ class LeaderboardManager {
     }
   }
 
-  // Get statistics for the leaderboard
-  async getLeaderboardStats() {
-    if (!window.supabaseClient) return null;
+// Add this fix to your leaderboard.js - replace the getLeaderboardStats method
+
+async getLeaderboardStats() {
+    if (!window.supabaseClient) {
+      console.warn('Supabase not available for stats');
+      return {
+        totalPlayers: 0,
+        totalLevelsCompleted: 0,
+        averageScore: 0,
+        highestScore: 0
+      };
+    }
 
     try {
       const { data, error } = await window.supabaseClient
         .from('leaderboard_entries')
         .select('total_score, levels_completed');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to get leaderboard stats:', error);
+        return {
+          totalPlayers: 0,
+          totalLevelsCompleted: 0,
+          averageScore: 0,
+          highestScore: 0
+        };
+      }
+
+      // Handle empty data
+      if (!data || data.length === 0) {
+        return {
+          totalPlayers: 0,
+          totalLevelsCompleted: 0,
+          averageScore: 0,
+          highestScore: 0
+        };
+      }
 
       const totalPlayers = data.length;
-      const totalLevelsCompleted = data.reduce((sum, e) => sum + e.levels_completed, 0);
-      const averageScore = Math.round(data.reduce((sum, e) => sum + e.total_score, 0) / totalPlayers);
-      const highestScore = Math.max(...data.map(e => e.total_score));
+      const totalLevelsCompleted = data.reduce((sum, e) => sum + (e.levels_completed || 0), 0);
+      const averageScore = Math.round(data.reduce((sum, e) => sum + (e.total_score || 0), 0) / totalPlayers);
+      const scores = data.map(e => e.total_score || 0).filter(s => s > 0);
+      const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
 
       return {
         totalPlayers,
@@ -301,7 +375,12 @@ class LeaderboardManager {
       };
     } catch (error) {
       console.error('Failed to get leaderboard stats:', error);
-      return null;
+      return {
+        totalPlayers: 0,
+        totalLevelsCompleted: 0,
+        averageScore: 0,
+        highestScore: 0
+      };
     }
   }
 
