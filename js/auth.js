@@ -1,3 +1,5 @@
+// Complete auth.js with fixed login and better error handling
+
 class AuthManager {
   constructor() {
     this.currentUser = null;
@@ -37,15 +39,35 @@ class AuthManager {
         throw new Error('Authentication service not available. Please try guest mode.');
       }
 
-      const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-        email,
-        password
+      console.log('Attempting login for:', email);
+
+      // Add timeout to prevent hanging
+      const loginPromise = window.supabaseClient.auth.signInWithPassword({
+        email: email.trim().toLowerCase(), // Ensure email is trimmed and lowercase
+        password: password
       });
 
-      if (error) throw error;
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Login timeout - please check your connection')), 10000)
+      );
+
+      const { data, error } = await Promise.race([loginPromise, timeoutPromise]);
+
+      if (error) {
+        console.error('Supabase login error:', error);
+        // Provide more user-friendly error messages
+        if (error.message.includes('fetch')) {
+          throw new Error('Connection error. Please check your internet and try again.');
+        } else if (error.message.includes('Invalid login')) {
+          throw new Error('Invalid email or password.');
+        } else {
+          throw error;
+        }
+      }
 
       this.currentUser = data.user;
       await this.loadUserProfile();
+      console.log('Login successful!');
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
@@ -60,9 +82,11 @@ class AuthManager {
         throw new Error('Registration service not available. Please try guest mode.');
       }
 
+      console.log('Attempting registration for:', email);
+
       const { data, error } = await window.supabaseClient.auth.signUp({
-        email,
-        password,
+        email: email.trim().toLowerCase(),
+        password: password,
         options: {
           data: {
             display_name: displayName
@@ -70,12 +94,19 @@ class AuthManager {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase registration error:', error);
+        if (error.message.includes('fetch')) {
+          throw new Error('Connection error. Please check your internet and try again.');
+        }
+        throw error;
+      }
 
       if (data.user) {
         // Create user profile
         await this.createUserProfile(data.user.id, displayName, email);
         this.currentUser = data.user;
+        console.log('Registration successful!');
         return { success: true, requiresConfirmation: !data.session };
       }
     } catch (error) {
@@ -97,13 +128,15 @@ class AuthManager {
           {
             id: userId,
             display_name: displayName,
-            email: email,
-            total_score: 0,
+            email: email.trim().toLowerCase(),
+            total_score: 100,
             created_at: new Date().toISOString()
           }
         ]);
 
-      if (error) throw error;
+      if (error && error.code !== '23505') { // Ignore duplicate key error
+        console.error('Profile creation error:', error);
+      }
     } catch (error) {
       console.error('Profile creation error:', error);
     }
