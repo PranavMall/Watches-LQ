@@ -14,22 +14,19 @@ class App {
     this.init();
   }
 
-// Replace your app.js init() method with this simpler version
+// WORKING init() method for app.js - Replace your current one with this
 
 async init() {
     try {
       console.log('App init started...');
       
       this.updateLoadingStatus('Initializing...');
-      
-      // Just check if client exists (config.js creates it)
-      console.log('Checking Supabase client...');
-      console.log('window.supabaseClient:', window.supabaseClient);
-      
-      if (!window.supabaseClient) {
-        console.warn('Supabase client not available, continuing in offline mode');
-      } else {
+
+      // Supabase check - but don't block if not available
+      if (window.supabaseClient) {
         console.log('✅ Supabase client is available!');
+      } else {
+        console.warn('Supabase client not available, continuing in offline mode');
       }
 
       this.updateLoadingStatus('Loading game managers...');
@@ -41,30 +38,36 @@ async init() {
 
       this.updateLoadingStatus('Loading game data...');
 
-      // Load game data
+      // Load game data but don't let it block forever
       try {
         await Promise.race([
           this.gameManager.loadGameData(),
-          new Promise((resolve) => setTimeout(resolve, 3000))
+          new Promise((resolve) => setTimeout(resolve, 2000)) // 2 second timeout
         ]);
       } catch (error) {
-        console.warn('Error loading game data, using defaults:', error);
+        console.warn('Game data loading error (continuing):', error);
       }
 
+      // Setup event listeners
       this.setupEventListeners();
-      this.updateLoadingStatus('Ready to play!');
+      
+      // Mark as initialized
       this.isInitialized = true;
+      this.updateLoadingStatus('Ready to play!');
 
-      // Show start screen
+      // Show start screen after brief delay
       setTimeout(() => {
         console.log('Showing start screen...');
-        console.log('Final Supabase check:', window.supabaseClient ? '✅ Available' : '❌ Not available');
         this.showScreen('start');
-      }, 1000);
+      }, 500);
 
     } catch (error) {
-      console.error('Critical app initialization error:', error);
-      this.handleInitError(error);
+      console.error('App initialization error:', error);
+      // IMPORTANT: Still show start screen even if there's an error
+      this.updateLoadingStatus('Starting...');
+      setTimeout(() => {
+        this.showScreen('start');
+      }, 500);
     }
   }
 
