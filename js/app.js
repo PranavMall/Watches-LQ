@@ -14,26 +14,58 @@ class App {
     this.init();
   }
 
+// Replace the entire init() method in your app.js with this debugging version
+
 async init() {
     try {
       console.log('App init started...');
       
       this.updateLoadingStatus('Initializing...');
       
-      // Try to initialize Supabase but don't fail if it doesn't work
-      try {
-        // Check if Supabase is loaded from CDN
-        if (typeof supabase !== 'undefined') {
+      // DETAILED SUPABASE INITIALIZATION WITH DEBUGGING
+      console.log('Checking for Supabase...');
+      console.log('typeof supabase:', typeof supabase);
+      console.log('SUPABASE_CONFIG:', SUPABASE_CONFIG);
+      
+      if (typeof supabase !== 'undefined') {
+        console.log('Supabase library found, creating client...');
+        
+        try {
+          // Create the Supabase client
           window.supabaseClient = supabase.createClient(
             SUPABASE_CONFIG.url, 
             SUPABASE_CONFIG.anonKey
           );
-          console.log('Supabase initialized successfully');
-        } else {
-          console.warn('Supabase not loaded, continuing in offline mode');
+          
+          console.log('Supabase client created successfully!');
+          console.log('Client object:', window.supabaseClient);
+          
+          // Test the connection with a simple query
+          console.log('Testing Supabase connection...');
+          const { data: testData, error: testError } = await window.supabaseClient
+            .from('user_profiles')
+            .select('count', { count: 'exact', head: true });
+          
+          if (testError) {
+            console.warn('Supabase test query failed (this is okay if table does not exist):', testError);
+            // Try to test auth instead
+            const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+            if (authError) {
+              console.warn('Auth test also failed:', authError);
+            } else {
+              console.log('Auth is working, user:', user);
+            }
+          } else {
+            console.log('Supabase is fully connected and working!');
+          }
+          
+        } catch (clientError) {
+          console.error('Failed to create Supabase client:', clientError);
+          window.supabaseClient = null;
         }
-      } catch (supabaseError) {
-        console.warn('Supabase initialization failed, continuing offline:', supabaseError);
+      } else {
+        console.warn('Supabase library not found in global scope');
+        window.supabaseClient = null;
       }
 
       this.updateLoadingStatus('Loading game managers...');
