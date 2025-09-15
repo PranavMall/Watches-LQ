@@ -14,7 +14,7 @@ class App {
     this.init();
   }
 
-// Replace your entire app.js init() method with this WORKING version
+// Replace your app.js init() method with this simpler version
 
 async init() {
     try {
@@ -22,51 +22,19 @@ async init() {
       
       this.updateLoadingStatus('Initializing...');
       
-      // WAIT FOR SUPABASE TO BE AVAILABLE
-      // Sometimes the CDN script hasn't fully loaded when init runs
-      let attempts = 0;
-      while (typeof supabase === 'undefined' && attempts < 10) {
-        console.log('Waiting for Supabase library to load...');
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
+      // Just check if client exists (config.js creates it)
+      console.log('Checking Supabase client...');
+      console.log('window.supabaseClient:', window.supabaseClient);
       
-      // Initialize Supabase client
-      if (typeof supabase !== 'undefined') {
-        console.log('Supabase library found!');
-        console.log('Creating client with:', {
-          url: SUPABASE_CONFIG.url,
-          keyLength: SUPABASE_CONFIG.anonKey.length
-        });
-        
-        try {
-          // CREATE THE CLIENT - This is what was failing
-          window.supabaseClient = supabase.createClient(
-            SUPABASE_CONFIG.url, 
-            SUPABASE_CONFIG.anonKey
-          );
-          
-          console.log('✓ Supabase client created successfully!');
-          console.log('Client object:', window.supabaseClient);
-          
-          // Quick test to verify it works
-          const { data, error } = await window.supabaseClient.auth.getSession();
-          if (!error) {
-            console.log('✓ Supabase auth is working!');
-          }
-          
-        } catch (error) {
-          console.error('Failed to create Supabase client:', error);
-          window.supabaseClient = null;
-        }
+      if (!window.supabaseClient) {
+        console.warn('Supabase client not available, continuing in offline mode');
       } else {
-        console.warn('Supabase library not available after waiting');
-        window.supabaseClient = null;
+        console.log('✅ Supabase client is available!');
       }
 
       this.updateLoadingStatus('Loading game managers...');
 
-      // Initialize managers (they will work even without Supabase)
+      // Initialize managers
       this.authManager = new AuthManager();
       this.gameManager = new GameManager(this.authManager);
       this.leaderboardManager = new LeaderboardManager(this.authManager, this.gameManager);
@@ -83,16 +51,6 @@ async init() {
         console.warn('Error loading game data, using defaults:', error);
       }
 
-      // DON'T register service worker if it's causing issues
-      // Comment this out for now
-      /*
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(err => 
-          console.warn('Service worker registration failed:', err)
-        );
-      }
-      */
-
       this.setupEventListeners();
       this.updateLoadingStatus('Ready to play!');
       this.isInitialized = true;
@@ -100,7 +58,7 @@ async init() {
       // Show start screen
       setTimeout(() => {
         console.log('Showing start screen...');
-        console.log('Final check - window.supabaseClient:', window.supabaseClient);
+        console.log('Final Supabase check:', window.supabaseClient ? '✅ Available' : '❌ Not available');
         this.showScreen('start');
       }, 1000);
 
