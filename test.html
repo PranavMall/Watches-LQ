@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    
+    <div id="results"></div>
+    
+    <button onclick="testRegistration()">Test Registration</button>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="checkTables()">Check Tables</button>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://xttecjpmfzisjhhlukfl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGVjanBtZnppc2poaGx1a2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxODU1ODksImV4cCI6MjA3MTc2MTU4OX0.UaKYYSeWj6nkxO2EU73Eoa2zlaYdSX6CGQGyQ_33edE';
+        
+        let supabaseClient = null;
+        const results = document.getElementById('results');
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(div);
+        }
+        
+        // Initialize Supabase
+        try {
+            addResult('Checking Supabase library...', 'info');
+            if (typeof supabase !== 'undefined') {
+                addResult('✓ Supabase library loaded', 'success');
+                
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                addResult('✓ Supabase client created', 'success');
+                
+                // Test connection
+                supabaseClient.auth.getSession().then(({ data, error }) => {
+                    if (error) {
+                        addResult(`Auth check error: ${error.message}`, 'error');
+                    } else {
+                        addResult('✓ Supabase auth is responsive', 'success');
+                    }
+                });
+                
+            } else {
+                addResult('✗ Supabase library not found', 'error');
+            }
+        } catch (e) {
+            addResult(`Initialization error: ${e.message}`, 'error');
+        }
+        
+        async function testRegistration() {
+            if (!supabaseClient) {
+                addResult('Client not initialized', 'error');
+                return;
+            }
+            
+            const testEmail = `test${Date.now()}@example.com`;
+            const testPassword = 'Test123456!';
+            
+            addResult(`Testing registration with ${testEmail}...`, 'info');
+            
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: testEmail,
+                password: testPassword,
+                options: {
+                    data: {
+                        display_name: 'Test User'
+                    }
+                }
+            });
+            
+            if (error) {
+                addResult(`Registration failed: ${error.message}`, 'error');
+            } else {
+                addResult(`✓ Registration successful! User ID: ${data.user?.id}`, 'success');
+                if (data.session) {
+                    addResult('✓ Session created immediately (email confirmation disabled)', 'success');
+                } else {
+                    addResult('⚠ Email confirmation required (check project settings)', 'info');
+                }
+            }
+        }
+        
+        async function testLogin() {
+            if (!supabaseClient) {
+                addResult('Client not initialized', 'error');
+                return;
+            }
+            
+            const email = prompt('Enter email:');
+            const password = prompt('Enter password:');
+            
+            if (!email || !password) {
+                addResult('Email and password required', 'error');
+                return;
+            }
+            
+            addResult(`Testing login for ${email}...`, 'info');
+            
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+            });
+            
+            if (error) {
+                addResult(`Login failed: ${error.message}`, 'error');
+            } else {
+                addResult(`✓ Login successful! User ID: ${data.user?.id}`, 'success');
+            }
+        }
+        
+        async function checkTables() {
+            if (!supabaseClient) {
+                addResult('Client not initialized', 'error');
+                return;
+            }
+            
+            addResult('Checking database tables...', 'info');
+            
+            // Check user_profiles table
+            const { data: profiles, error: profilesError } = await supabaseClient
+                .from('user_profiles')
+                .select('*')
+                .limit(1);
+            
+            if (profilesError) {
+                addResult(`user_profiles table error: ${profilesError.message}`, 'error');
+            } else {
+                addResult('✓ user_profiles table accessible', 'success');
+            }
+            
+            // Check leaderboard_entries table
+            const { data: leaderboard, error: leaderboardError } = await supabaseClient
+                .from('leaderboard_entries')
+                .select('*')
+                .limit(1);
+            
+            if (leaderboardError) {
+                addResult(`leaderboard_entries table error: ${leaderboardError.message}`, 'error');
+            } else {
+                addResult('✓ leaderboard_entries table accessible', 'success');
+            }
+            
+            // Check user_progress table
+            const { data: progress, error: progressError } = await supabaseClient
+                .from('user_progress')
+                .select('*')
+                .limit(1);
+            
+            if (progressError) {
+                addResult(`user_progress table error: ${progressError.message}`, 'error');
+            } else {
+                addResult('✓ user_progress table accessible', 'success');
+            }
+        }
+    </script>
+</body>
+</html>
