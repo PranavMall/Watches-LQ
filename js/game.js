@@ -123,36 +123,44 @@ class GameManager {
     }
   }
 
-  async saveProgress() {
-    localStorage.setItem('watches_lq_total_score', this.totalScore.toString());
-    localStorage.setItem('watches_lq_progress', JSON.stringify(this.userProgress));
-    
-    const user = this.authManager.getCurrentUser();
-    if (user && window.supabaseClient) {
-      try {
-        for (const [difficulty, progress] of Object.entries(this.userProgress)) {
-          await window.supabaseClient
-            .from('user_progress')
-            .upsert([
-              {
-                user_id: user.id,
-                difficulty: difficulty,
-                completed_levels: progress.completed,
-                level_scores: progress.scores,
-                failed_levels: progress.failed || [],
-                completed_levels_array: progress.completedLevels || [],
-                total_score: this.totalScore,
-                updated_at: new Date().toISOString()
-              }
-            ], { onConflict: 'user_id,difficulty' });
+async saveProgress() {
+  localStorage.setItem('watches_lq_total_score', this.totalScore.toString());
+  localStorage.setItem('watches_lq_progress', JSON.stringify(this.userProgress));
+  
+  const user = this.authManager.getCurrentUser();
+  if (user && !this.authManager.isGuestUser() && window.supabaseClient) {
+    try {
+      for (const [difficulty, progress] of Object.entries(this.userProgress)) {
+        // Use upsert to handle inserts and updates
+        const { error } = await window.supabaseClient
+          .from('user_progress')
+          .upsert([
+            {
+              user_id: user.id,
+              difficulty: difficulty,
+              completed_levels: progress.completed || 0,
+              level_scores: progress.scores || [],
+              failed_levels: progress.failed || [],
+              completed_levels_array: progress.completedLevels || [],
+              total_score: this.totalScore,
+              updated_at: new Date().toISOString()
+            }
+          ], { 
+            onConflict: 'user_id,difficulty',
+            ignoreDuplicates: false 
+          });
+
+        if (error) {
+          console.error(`Failed to save progress for ${difficulty}:`, error);
         }
-        
-        await this.updateLeaderboard();
-      } catch (error) {
-        console.warn('Failed to save progress to server:', error);
       }
+      
+      await this.updateLeaderboard();
+    } catch (error) {
+      console.warn('Failed to save progress to server:', error);
     }
   }
+}
 
   // Add this method to your GameManager class in game.js
 
@@ -317,27 +325,32 @@ async resetGameProgress() {
 }
 
   async updateLeaderboard() {
-    const user = this.authManager.getCurrentUser();
-    if (!user || !window.supabaseClient) return;
+  const user = this.authManager.getCurrentUser();
+  if (!user || !window.supabaseClient) return;
+  
+  try {
+    const displayName = this.authManager.getDisplayName();
     
-    try {
-      const displayName = this.authManager.getDisplayName();
-      
-      await window.supabaseClient
-        .from('leaderboard')
-        .upsert([
-          {
-            user_id: user.id,
-            display_name: displayName,
-            total_score: this.totalScore,
-            levels_completed: this.getTotalLevelsCompleted(),
-            updated_at: new Date().toISOString()
-          }
-        ], { onConflict: 'user_id' });
-    } catch (error) {
-      console.warn('Failed to update leaderboard:', error);
-    }
+    // Calculate difficulty breakdowns
+    const easyCompleted = (this.userProgress.easy?.completedLevels || []).length;
+    const mediumCompleted = (this.userProgress.medium?.completedLevels || []).length;
+    const hardCompleted = (this.userProgress.hard?.completedLevels || []).length;
+    
+    await window.supabaseClient
+      .from('user_profiles')
+      .upsert([
+        {
+          id: user.id,
+          display_name: displayName,
+          email: user.email,
+          total_score: this.totalScore,
+          updated_at: new Date().toISOString()
+        }
+      ], { onConflict: 'id' });
+  } catch (error) {
+    console.warn('Failed to update user profile:', error);
   }
+}
 
   getTotalLevelsCompleted() {
     let total = 0;
