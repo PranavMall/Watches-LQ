@@ -1,4 +1,4 @@
-// js/leaderboard.js - Complete Leaderboard Management System
+// js/leaderboard.js - Updated for new schema
 class LeaderboardManager {
   constructor(authManager, gameManager) {
     this.authManager = authManager;
@@ -37,6 +37,9 @@ class LeaderboardManager {
       const user = this.authManager.getCurrentUser();
       const isGuest = this.authManager.isGuestUser();
       
+      // Set session context for RLS policies
+      await this.setSessionContext();
+      
       // Get device info for analytics
       const deviceInfo = {
         userAgent: navigator.userAgent,
@@ -55,7 +58,7 @@ class LeaderboardManager {
 
       if (!existingSession) {
         // Create new session
-        await window.supabaseClient
+        const { error } = await window.supabaseClient
           .from('user_sessions')
           .insert([{
             user_id: isGuest ? null : user?.id,
@@ -64,6 +67,11 @@ class LeaderboardManager {
             is_guest: isGuest,
             device_info: deviceInfo
           }]);
+
+        if (error) {
+          console.error('Failed to create session:', error);
+          return;
+        }
       } else {
         // Update last active time
         await window.supabaseClient
@@ -79,9 +87,22 @@ class LeaderboardManager {
     }
   }
 
- // Replace the updateLeaderboardEntry method in leaderboard.js with this fixed version
+  // Set session context for RLS policies
+  async setSessionContext() {
+    if (!window.supabaseClient) return;
+    
+    try {
+      await window.supabaseClient.rpc('set_config', {
+        setting_name: 'app.session_id',
+        setting_value: this.sessionId,
+        is_local: true
+      });
+    } catch (error) {
+      console.warn('Failed to set session context:', error);
+    }
+  }
 
-async updateLeaderboardEntry() {
+  async updateLeaderboardEntry() {
     if (!window.supabaseClient) {
       console.warn('Supabase not available, skipping leaderboard update');
       return;
@@ -92,6 +113,12 @@ async updateLeaderboardEntry() {
       const isGuest = this.authManager.isGuestUser();
       const progress = this.gameManager.userProgress;
       
+      // Ensure session exists first
+      await this.ensureSessionExists();
+      
+      // Set session context for RLS
+      await this.setSessionContext();
+      
       // Calculate total levels completed across all difficulties
       const easyCompleted = (progress.easy?.completedLevels || []).length;
       const mediumCompleted = (progress.medium?.completedLevels || []).length;
@@ -100,6 +127,45 @@ async updateLeaderboardEntry() {
 
       // Get country code from timezone (rough approximation)
       const countryCode = this.getCountryFromTimezone();
+
+      // Use the upsert function from your schema
+      const { error } = await window.supabaseClient.rpc('upsert_leaderboard_entry', {
+        p_user_id: isGuest ? null : user?.id,
+        p_session_id: this.sessionId,
+        p_display_name: this.authManager.getDisplayName(),
+        p_total_score: this.gameManager.getTotalScore(),
+        p_levels_completed: totalCompleted,
+        p_easy_completed: easyCompleted,
+        p_medium_completed: mediumCompleted,
+        p_hard_completed: hardCompleted,
+        p_is_guest: isGuest,
+        p_country_code: countryCode
+      });
+
+      if (error) {
+        console.error('Failed to update leaderboard entry:', error);
+        
+        // Fallback: try direct insert/update
+        await this.fallbackLeaderboardUpdate();
+      } else {
+        console.log('Leaderboard entry updated successfully');
+      }
+    } catch (error) {
+      console.error('Failed to update leaderboard:', error);
+    }
+  }
+
+  // Fallback method if the upsert function fails
+  async fallbackLeaderboardUpdate() {
+    try {
+      const user = this.authManager.getCurrentUser();
+      const isGuest = this.authManager.isGuestUser();
+      const progress = this.gameManager.userProgress;
+      
+      const easyCompleted = (progress.easy?.completedLevels || []).length;
+      const mediumCompleted = (progress.medium?.completedLevels || []).length;
+      const hardCompleted = (progress.hard?.completedLevels || []).length;
+      const totalCompleted = easyCompleted + mediumCompleted + hardCompleted;
 
       const entryData = {
         user_id: isGuest ? null : user?.id,
@@ -111,86 +177,84 @@ async updateLeaderboardEntry() {
         medium_completed: mediumCompleted,
         hard_completed: hardCompleted,
         is_guest: isGuest,
-        country_code: countryCode,
+        country_code: this.getCountryFromTimezone(),
         updated_at: new Date().toISOString()
       };
 
-      console.log('Updating leaderboard with:', entryData);
+      // Check if entry exists
+      let existingQuery = window.supabaseClient
+        .from('leaderboard_entries')
+        .select('*');
 
-      // For guests, use session_id as unique identifier
       if (isGuest) {
-        // Check if guest entry exists
-        const { data: existingEntry } = await window.supabaseClient
-          .from('leaderboard_entries')
-          .select('*')
-          .eq('session_id', this.sessionId)
-          .single();
+        existingQuery = existingQuery.eq('session_id', this.sessionId);
+      } else {
+        existingQuery = existingQuery.eq('user_id', user.id);
+      }
 
-        if (existingEntry) {
-          // Update existing guest entry
+      const { data: existingEntry } = await existingQuery.single();
+
+      if (existingEntry) {
+        // Update existing entry only if score is higher
+        if (entryData.total_score >= existingEntry.total_score) {
           const { error } = await window.supabaseClient
             .from('leaderboard_entries')
             .update(entryData)
-            .eq('session_id', this.sessionId);
+            .eq('id', existingEntry.id);
 
-          if (error) {
-            console.error('Failed to update guest leaderboard entry:', error);
-          } else {
-            console.log('Guest leaderboard entry updated successfully');
-          }
-        } else {
-          // Create new guest entry
-          const { error } = await window.supabaseClient
-            .from('leaderboard_entries')
-            .insert([entryData]);
-
-          if (error) {
-            console.error('Failed to create guest leaderboard entry:', error);
-          } else {
-            console.log('Guest leaderboard entry created successfully');
-          }
+          if (error) throw error;
         }
       } else {
-        // For registered users, use user_id as unique identifier
-        const { data: existingEntry } = await window.supabaseClient
+        // Insert new entry
+        const { error } = await window.supabaseClient
           .from('leaderboard_entries')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+          .insert([entryData]);
 
-        if (existingEntry) {
-          // Update existing user entry only if score is higher
-          if (entryData.total_score >= existingEntry.total_score) {
-            const { error } = await window.supabaseClient
-              .from('leaderboard_entries')
-              .update(entryData)
-              .eq('user_id', user.id);
-
-            if (error) {
-              console.error('Failed to update user leaderboard entry:', error);
-            } else {
-              console.log('User leaderboard entry updated successfully');
-            }
-          }
-        } else {
-          // Create new user entry
-          const { error } = await window.supabaseClient
-            .from('leaderboard_entries')
-            .insert([entryData]);
-
-          if (error) {
-            console.error('Failed to create user leaderboard entry:', error);
-          } else {
-            console.log('User leaderboard entry created successfully');
-          }
-        }
+        if (error) throw error;
       }
+
+      console.log('Fallback leaderboard update successful');
     } catch (error) {
-      console.error('Failed to update leaderboard:', error);
+      console.error('Fallback leaderboard update failed:', error);
     }
   }
 
-  // Fetch leaderboard data
+  // Ensure session exists before creating leaderboard entry
+  async ensureSessionExists() {
+    try {
+      const { data: session } = await window.supabaseClient
+        .from('user_sessions')
+        .select('*')
+        .eq('session_id', this.sessionId)
+        .single();
+
+      if (!session) {
+        // Create session
+        const user = this.authManager.getCurrentUser();
+        const isGuest = this.authManager.isGuestUser();
+
+        const { error } = await window.supabaseClient
+          .from('user_sessions')
+          .insert([{
+            user_id: isGuest ? null : user?.id,
+            session_id: this.sessionId,
+            display_name: this.authManager.getDisplayName(),
+            is_guest: isGuest,
+            device_info: {}
+          }]);
+
+        if (error) {
+          console.error('Failed to create session:', error);
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error('Error ensuring session exists:', error);
+      throw error;
+    }
+  }
+
+  // Fetch leaderboard data using views for better performance
   async fetchLeaderboard(timeframe = 'all', limit = 100) {
     if (!window.supabaseClient) {
       console.warn('Supabase not available');
@@ -200,37 +264,36 @@ async updateLeaderboardEntry() {
     this.isLoading = true;
 
     try {
-      let query = window.supabaseClient
-        .from('leaderboard_entries')
-        .select('*');
-
-      // Apply timeframe filters
-      const now = new Date();
-      switch (timeframe) {
-        case 'daily':
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          query = query.gte('updated_at', today.toISOString());
-          break;
-        case 'weekly':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          query = query.gte('updated_at', weekAgo.toISOString());
-          break;
-        // 'all' doesn't need additional filtering
+      let query;
+      
+      // Use views for weekly and daily leaderboards
+      if (timeframe === 'weekly') {
+        query = window.supabaseClient
+          .from('weekly_leaderboard')
+          .select('*')
+          .limit(limit);
+      } else if (timeframe === 'daily') {
+        query = window.supabaseClient
+          .from('daily_leaderboard')
+          .select('*')
+          .limit(limit);
+      } else {
+        // All-time leaderboard
+        query = window.supabaseClient
+          .from('leaderboard_entries')
+          .select('*')
+          .order('total_score', { ascending: false })
+          .limit(limit);
       }
-
-      // Order by score and limit results
-      query = query
-        .order('total_score', { ascending: false })
-        .limit(limit);
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      // Add rank to each entry
+      // Add rank if not already present
       const rankedData = data.map((entry, index) => ({
         ...entry,
-        rank: index + 1
+        rank: entry.rank || (index + 1)
       }));
 
       this.leaderboardData[timeframe] = rankedData;
@@ -304,8 +367,10 @@ async updateLeaderboardEntry() {
           countQuery = countQuery.gte('updated_at', today.toISOString());
           break;
         case 'weekly':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          countQuery = countQuery.gte('updated_at', weekAgo.toISOString());
+          const weekStart = new Date(now);
+          weekStart.setDate(now.getDate() - now.getDay());
+          weekStart.setHours(0, 0, 0, 0);
+          countQuery = countQuery.gte('updated_at', weekStart.toISOString());
           break;
       }
 
@@ -323,9 +388,7 @@ async updateLeaderboardEntry() {
     }
   }
 
-// Add this fix to your leaderboard.js - replace the getLeaderboardStats method
-
-async getLeaderboardStats() {
+  async getLeaderboardStats() {
     if (!window.supabaseClient) {
       console.warn('Supabase not available for stats');
       return {
@@ -440,11 +503,6 @@ async getLeaderboardStats() {
   async clearGuestData() {
     if (this.authManager.isGuestUser() && window.supabaseClient) {
       try {
-        await window.supabaseClient
-          .from('leaderboard_entries')
-          .delete()
-          .eq('session_id', this.sessionId);
-        
         await window.supabaseClient
           .from('user_sessions')
           .delete()
