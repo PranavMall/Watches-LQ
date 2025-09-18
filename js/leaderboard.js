@@ -1,4 +1,4 @@
-// js/leaderboard.js - Fixed Version for Mobile and Guest Users
+// js/leaderboard.js - Updated for new schema
 class LeaderboardManager {
   constructor(authManager, gameManager) {
     this.authManager = authManager;
@@ -12,213 +12,197 @@ class LeaderboardManager {
     };
     this.userRank = null;
     this.isLoading = false;
-    this.retryCount = 0;
-    this.maxRetries = 3;
     
     // Initialize session tracking
     this.initializeSession();
   }
 
-  // Session Management - Fixed for mobile
+  // Session Management
   getOrCreateSessionId() {
     let sessionId = localStorage.getItem('watches_lq_session_id');
     if (!sessionId) {
-      // Create more robust session ID for mobile
-      sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+      sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       localStorage.setItem('watches_lq_session_id', sessionId);
-      console.log('Created new session ID:', sessionId);
     }
     return sessionId;
   }
 
   async initializeSession() {
     if (!window.supabaseClient) {
-      console.warn('Supabase not available, using offline mode');
-      return { success: false, offline: true };
+      console.warn('Supabase not available, skipping session initialization');
+      return;
     }
 
     try {
       const user = this.authManager.getCurrentUser();
       const isGuest = this.authManager.isGuestUser();
       
-      console.log('Initializing session:', { 
-        sessionId: this.sessionId, 
-        isGuest, 
-        userId: user?.id 
-      });
-
-      // Get device info for better tracking
-      const deviceInfo = this.getDeviceInfo();
+      // Set session context for RLS policies
+      await this.setSessionContext();
+      
+      // Get device info for analytics
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
 
       // Check if session exists
-      const { data: existingSession, error: sessionError } = await window.supabaseClient
+      const { data: existingSession } = await window.supabaseClient
         .from('user_sessions')
         .select('*')
         .eq('session_id', this.sessionId)
-        .maybeSingle(); // Use maybeSingle to avoid errors when no record found
-
-      if (sessionError && sessionError.code !== 'PGRST116') {
-        console.error('Session check error:', sessionError);
-        throw sessionError;
-      }
-
-      const sessionData = {
-        user_id: isGuest ? null : user?.id,
-        session_id: this.sessionId,
-        display_name: this.authManager.getDisplayName(),
-        is_guest: isGuest,
-        device_info: deviceInfo,
-        last_active: new Date().toISOString()
-      };
+        .single();
 
       if (!existingSession) {
         // Create new session
-        const { error: insertError } = await window.supabaseClient
+        const { error } = await window.supabaseClient
           .from('user_sessions')
-          .insert([sessionData]);
+          .insert([{
+            user_id: isGuest ? null : user?.id,
+            session_id: this.sessionId,
+            display_name: this.authManager.getDisplayName(),
+            is_guest: isGuest,
+            device_info: deviceInfo
+          }]);
 
-        if (insertError) {
-          console.error('Failed to create session:', insertError);
-          throw insertError;
+        if (error) {
+          console.error('Failed to create session:', error);
+          return;
         }
-        console.log('Session created successfully');
       } else {
-        // Update existing session
-        const { error: updateError } = await window.supabaseClient
+        // Update last active time
+        await window.supabaseClient
           .from('user_sessions')
-          .update({
-            display_name: sessionData.display_name,
-            last_active: sessionData.last_active,
-            user_id: sessionData.user_id,
-            is_guest: sessionData.is_guest
+          .update({ 
+            last_active: new Date().toISOString(),
+            display_name: this.authManager.getDisplayName()
           })
           .eq('session_id', this.sessionId);
-
-        if (updateError) {
-          console.error('Failed to update session:', updateError);
-        } else {
-          console.log('Session updated successfully');
-        }
       }
-
-      return { success: true };
     } catch (error) {
       console.error('Session initialization error:', error);
-      return { success: false, error: error.message };
     }
   }
 
-  // Get comprehensive device info for mobile tracking
-  getDeviceInfo() {
-    const nav = navigator;
-    return {
-      userAgent: nav.userAgent,
-      platform: nav.platform,
-      language: nav.language,
-      languages: nav.languages,
-      screenResolution: `${screen.width}x${screen.height}`,
-      screenAvailSize: `${screen.availWidth}x${screen.availHeight}`,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      cookieEnabled: nav.cookieEnabled,
-      onLine: nav.onLine,
-      deviceMemory: nav.deviceMemory || 'unknown',
-      hardwareConcurrency: nav.hardwareConcurrency || 'unknown',
-      maxTouchPoints: nav.maxTouchPoints || 0,
-      isMobile: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(nav.userAgent),
-      isIOS: /iPad|iPhone|iPod/.test(nav.userAgent) && !window.MSStream,
-      isAndroid: /Android/i.test(nav.userAgent),
-      timestamp: new Date().toISOString()
-    };
+  // Set session context for RLS policies
+  async setSessionContext() {
+    if (!window.supabaseClient) return;
+    
+    try {
+      await window.supabaseClient.rpc('set_config', {
+        setting_name: 'app.session_id',
+        setting_value: this.sessionId,
+        is_local: true
+      });
+    } catch (error) {
+      console.warn('Failed to set session context:', error);
+    }
   }
 
-  // Enhanced leaderboard update with retry logic
   async updateLeaderboardEntry() {
     if (!window.supabaseClient) {
-      console.warn('Supabase not available, storing locally');
-      this.storeLeaderboardLocally();
-      return { success: false, offline: true };
+      console.warn('Supabase not available, skipping leaderboard update');
+      return;
     }
 
-    // Reset retry count for new update
-    this.retryCount = 0;
-    return await this.attemptLeaderboardUpdate();
-  }
-
-  async attemptLeaderboardUpdate() {
     try {
       const user = this.authManager.getCurrentUser();
       const isGuest = this.authManager.isGuestUser();
       const progress = this.gameManager.userProgress;
       
-      console.log('Updating leaderboard entry:', { 
-        sessionId: this.sessionId, 
-        isGuest, 
-        userId: user?.id,
-        totalScore: this.gameManager.getTotalScore()
-      });
-
       // Ensure session exists first
       await this.ensureSessionExists();
       
-      // Calculate stats
+      // Set session context for RLS
+      await this.setSessionContext();
+      
+      // Calculate total levels completed across all difficulties
       const easyCompleted = (progress.easy?.completedLevels || []).length;
       const mediumCompleted = (progress.medium?.completedLevels || []).length;
       const hardCompleted = (progress.hard?.completedLevels || []).length;
       const totalCompleted = easyCompleted + mediumCompleted + hardCompleted;
-      const totalScore = this.gameManager.getTotalScore();
 
-      // Get or create leaderboard entry
-      let existingEntry = null;
-      
-      // First, try to find existing entry
-      if (isGuest) {
-        const { data } = await window.supabaseClient
-          .from('leaderboard_entries')
-          .select('*')
-          .eq('session_id', this.sessionId)
-          .maybeSingle();
-        existingEntry = data;
-      } else if (user?.id) {
-        const { data } = await window.supabaseClient
-          .from('leaderboard_entries')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        existingEntry = data;
+      // Get country code from timezone (rough approximation)
+      const countryCode = this.getCountryFromTimezone();
+
+      // Use the upsert function from your schema
+      const { error } = await window.supabaseClient.rpc('upsert_leaderboard_entry', {
+        p_user_id: isGuest ? null : user?.id,
+        p_session_id: this.sessionId,
+        p_display_name: this.authManager.getDisplayName(),
+        p_total_score: this.gameManager.getTotalScore(),
+        p_levels_completed: totalCompleted,
+        p_easy_completed: easyCompleted,
+        p_medium_completed: mediumCompleted,
+        p_hard_completed: hardCompleted,
+        p_is_guest: isGuest,
+        p_country_code: countryCode
+      });
+
+      if (error) {
+        console.error('Failed to update leaderboard entry:', error);
+        
+        // Fallback: try direct insert/update
+        await this.fallbackLeaderboardUpdate();
+      } else {
+        console.log('Leaderboard entry updated successfully');
       }
+    } catch (error) {
+      console.error('Failed to update leaderboard:', error);
+    }
+  }
+
+  // Fallback method if the upsert function fails
+  async fallbackLeaderboardUpdate() {
+    try {
+      const user = this.authManager.getCurrentUser();
+      const isGuest = this.authManager.isGuestUser();
+      const progress = this.gameManager.userProgress;
+      
+      const easyCompleted = (progress.easy?.completedLevels || []).length;
+      const mediumCompleted = (progress.medium?.completedLevels || []).length;
+      const hardCompleted = (progress.hard?.completedLevels || []).length;
+      const totalCompleted = easyCompleted + mediumCompleted + hardCompleted;
 
       const entryData = {
         user_id: isGuest ? null : user?.id,
         session_id: this.sessionId,
         display_name: this.authManager.getDisplayName(),
-        total_score: totalScore,
+        total_score: this.gameManager.getTotalScore(),
         levels_completed: totalCompleted,
         easy_completed: easyCompleted,
         medium_completed: mediumCompleted,
         hard_completed: hardCompleted,
-        total_time_played: this.calculateTotalTimePlayed(),
-        perfect_completions: this.calculatePerfectCompletions(),
-        hints_used: this.calculateTotalHintsUsed(),
         is_guest: isGuest,
         country_code: this.getCountryFromTimezone(),
         updated_at: new Date().toISOString()
       };
 
-      let result;
+      // Check if entry exists
+      let existingQuery = window.supabaseClient
+        .from('leaderboard_entries')
+        .select('*');
+
+      if (isGuest) {
+        existingQuery = existingQuery.eq('session_id', this.sessionId);
+      } else {
+        existingQuery = existingQuery.eq('user_id', user.id);
+      }
+
+      const { data: existingEntry } = await existingQuery.single();
+
       if (existingEntry) {
-        // Update existing entry only if score improved or stats changed
-        if (totalScore >= existingEntry.total_score || 
-            totalCompleted > existingEntry.levels_completed) {
-          
+        // Update existing entry only if score is higher
+        if (entryData.total_score >= existingEntry.total_score) {
           const { error } = await window.supabaseClient
             .from('leaderboard_entries')
             .update(entryData)
             .eq('id', existingEntry.id);
 
           if (error) throw error;
-          result = { success: true, action: 'updated' };
-        } else {
-          result = { success: true, action: 'no_change' };
         }
       } else {
         // Insert new entry
@@ -227,125 +211,42 @@ class LeaderboardManager {
           .insert([entryData]);
 
         if (error) throw error;
-        result = { success: true, action: 'created' };
       }
 
-      console.log('Leaderboard entry updated:', result);
-      return result;
-
+      console.log('Fallback leaderboard update successful');
     } catch (error) {
-      console.error('Leaderboard update error:', error);
-      
-      // Retry logic for mobile network issues
-      if (this.retryCount < this.maxRetries && this.isRetryableError(error)) {
-        this.retryCount++;
-        console.log(`Retrying leaderboard update (${this.retryCount}/${this.maxRetries})`);
-        
-        // Exponential backoff
-        const delay = Math.pow(2, this.retryCount) * 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
-        
-        return await this.attemptLeaderboardUpdate();
-      }
-
-      // Store locally if all retries failed
-      this.storeLeaderboardLocally();
-      return { success: false, error: error.message, stored_locally: true };
+      console.error('Fallback leaderboard update failed:', error);
     }
   }
 
-  // Check if error is retryable (network issues, timeouts, etc.)
-  isRetryableError(error) {
-    const retryableErrors = [
-      'fetch',
-      'network',
-      'timeout',
-      'connection',
-      'ECONNRESET',
-      'ETIMEDOUT'
-    ];
-    
-    const errorMessage = error.message?.toLowerCase() || '';
-    return retryableErrors.some(keyword => errorMessage.includes(keyword));
-  }
-
-  // Store leaderboard data locally when offline
-  storeLeaderboardLocally() {
-    try {
-      const localData = {
-        sessionId: this.sessionId,
-        userId: this.authManager.getCurrentUser()?.id,
-        isGuest: this.authManager.isGuestUser(),
-        displayName: this.authManager.getDisplayName(),
-        totalScore: this.gameManager.getTotalScore(),
-        progress: this.gameManager.userProgress,
-        timestamp: new Date().toISOString()
-      };
-
-      localStorage.setItem('watches_lq_pending_leaderboard', JSON.stringify(localData));
-      console.log('Leaderboard data stored locally for later sync');
-    } catch (error) {
-      console.error('Failed to store leaderboard locally:', error);
-    }
-  }
-
-  // Sync local leaderboard data when connection is restored
-  async syncLocalLeaderboardData() {
-    const pendingData = localStorage.getItem('watches_lq_pending_leaderboard');
-    if (!pendingData || !window.supabaseClient) return;
-
-    try {
-      const data = JSON.parse(pendingData);
-      console.log('Syncing local leaderboard data:', data);
-
-      // Update with current data and sync
-      await this.updateLeaderboardEntry();
-      
-      // Remove pending data after successful sync
-      localStorage.removeItem('watches_lq_pending_leaderboard');
-      console.log('Local leaderboard data synced successfully');
-    } catch (error) {
-      console.error('Failed to sync local leaderboard data:', error);
-    }
-  }
-
-  // Calculate additional stats for better leaderboard
-  calculateTotalTimePlayed() {
-    // This would need to be tracked in game manager
-    return 0; // Placeholder
-  }
-
-  calculatePerfectCompletions() {
-    let perfect = 0;
-    Object.values(this.gameManager.userProgress).forEach(progress => {
-      if (progress.scores) {
-        perfect += progress.scores.filter(score => score >= 100).length;
-      }
-    });
-    return perfect;
-  }
-
-  calculateTotalHintsUsed() {
-    // This would need to be tracked in game manager
-    return 0; // Placeholder
-  }
-
-  // Enhanced session existence check
+  // Ensure session exists before creating leaderboard entry
   async ensureSessionExists() {
     try {
-      const { data: session, error } = await window.supabaseClient
+      const { data: session } = await window.supabaseClient
         .from('user_sessions')
         .select('*')
         .eq('session_id', this.sessionId)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
+        .single();
 
       if (!session) {
-        console.log('Session not found, creating new one');
-        await this.initializeSession();
+        // Create session
+        const user = this.authManager.getCurrentUser();
+        const isGuest = this.authManager.isGuestUser();
+
+        const { error } = await window.supabaseClient
+          .from('user_sessions')
+          .insert([{
+            user_id: isGuest ? null : user?.id,
+            session_id: this.sessionId,
+            display_name: this.authManager.getDisplayName(),
+            is_guest: isGuest,
+            device_info: {}
+          }]);
+
+        if (error) {
+          console.error('Failed to create session:', error);
+          throw error;
+        }
       }
     } catch (error) {
       console.error('Error ensuring session exists:', error);
@@ -353,158 +254,83 @@ class LeaderboardManager {
     }
   }
 
-  // Enhanced leaderboard fetching with mobile optimization
+  // Fetch leaderboard data using views for better performance
   async fetchLeaderboard(timeframe = 'all', limit = 100) {
     if (!window.supabaseClient) {
-      console.warn('Supabase not available, returning cached data');
-      return this.getCachedLeaderboard(timeframe);
+      console.warn('Supabase not available');
+      return [];
     }
 
     this.isLoading = true;
 
     try {
       let query;
-      const now = new Date();
       
-      // Build query based on timeframe
-      query = window.supabaseClient
-        .from('leaderboard_entries')
-        .select('*')
-        .order('total_score', { ascending: false })
-        .order('levels_completed', { ascending: false })
-        .order('updated_at', { ascending: true }) // Earlier completion wins ties
-        .limit(limit);
-
-      // Apply timeframe filters
-      switch (timeframe) {
-        case 'daily':
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          query = query.gte('updated_at', today.toISOString());
-          break;
-        case 'weekly':
-          const weekStart = new Date(now);
-          weekStart.setDate(now.getDate() - now.getDay());
-          weekStart.setHours(0, 0, 0, 0);
-          query = query.gte('updated_at', weekStart.toISOString());
-          break;
-        // 'all' doesn't need additional filters
+      // Use views for weekly and daily leaderboards
+      if (timeframe === 'weekly') {
+        query = window.supabaseClient
+          .from('weekly_leaderboard')
+          .select('*')
+          .limit(limit);
+      } else if (timeframe === 'daily') {
+        query = window.supabaseClient
+          .from('daily_leaderboard')
+          .select('*')
+          .limit(limit);
+      } else {
+        // All-time leaderboard
+        query = window.supabaseClient
+          .from('leaderboard_entries')
+          .select('*')
+          .order('total_score', { ascending: false })
+          .limit(limit);
       }
 
       const { data, error } = await query;
 
-      if (error) {
-        console.error('Leaderboard fetch error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      // Add rank and process data
-      const rankedData = (data || []).map((entry, index) => ({
+      // Add rank if not already present
+      const rankedData = data.map((entry, index) => ({
         ...entry,
-        rank: index + 1,
-        display_name: entry.display_name || 'Anonymous',
-        is_current_user: this.isCurrentUser(entry)
+        rank: entry.rank || (index + 1)
       }));
 
-      // Cache the data
       this.leaderboardData[timeframe] = rankedData;
-      this.cacheLeaderboard(timeframe, rankedData);
 
       // Find current user's rank
       this.findUserRank(rankedData);
 
-      console.log(`Fetched ${rankedData.length} leaderboard entries for ${timeframe}`);
       return rankedData;
-
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
-      
-      // Return cached data on error
-      const cachedData = this.getCachedLeaderboard(timeframe);
-      if (cachedData.length > 0) {
-        console.log('Returning cached leaderboard data');
-        return cachedData;
-      }
-      
       return [];
     } finally {
       this.isLoading = false;
     }
   }
 
-  // Check if entry belongs to current user
-  isCurrentUser(entry) {
-    const user = this.authManager.getCurrentUser();
-    const isGuest = this.authManager.isGuestUser();
-
-    if (isGuest) {
-      return entry.session_id === this.sessionId;
-    } else if (user?.id) {
-      return entry.user_id === user.id;
-    }
-    
-    return false;
-  }
-
-  // Cache leaderboard data for offline use
-  cacheLeaderboard(timeframe, data) {
-    try {
-      const cacheKey = `watches_lq_leaderboard_${timeframe}`;
-      const cacheData = {
-        data: data,
-        timestamp: new Date().toISOString(),
-        timeframe: timeframe
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-    } catch (error) {
-      console.error('Failed to cache leaderboard:', error);
-    }
-  }
-
-  // Get cached leaderboard data
-  getCachedLeaderboard(timeframe) {
-    try {
-      const cacheKey = `watches_lq_leaderboard_${timeframe}`;
-      const cached = localStorage.getItem(cacheKey);
-      
-      if (cached) {
-        const cacheData = JSON.parse(cached);
-        const cacheAge = Date.now() - new Date(cacheData.timestamp).getTime();
-        
-        // Use cached data if less than 5 minutes old
-        if (cacheAge < 5 * 60 * 1000) {
-          console.log(`Using cached leaderboard data for ${timeframe}`);
-          return cacheData.data || [];
-        }
-      }
-    } catch (error) {
-      console.error('Failed to get cached leaderboard:', error);
-    }
-    
-    return [];
-  }
-
-  // Find user's rank in leaderboard data
+  // Find user's rank in leaderboard
   findUserRank(leaderboardData) {
     const user = this.authManager.getCurrentUser();
     const isGuest = this.authManager.isGuestUser();
 
-    let userEntry = null;
-
     if (isGuest) {
-      userEntry = leaderboardData.find(e => e.session_id === this.sessionId);
-    } else if (user?.id) {
-      userEntry = leaderboardData.find(e => e.user_id === user.id);
+      // Find by session ID for guests
+      const entry = leaderboardData.find(e => e.session_id === this.sessionId);
+      this.userRank = entry ? entry.rank : null;
+    } else if (user) {
+      // Find by user ID for authenticated users
+      const entry = leaderboardData.find(e => e.user_id === user.id);
+      this.userRank = entry ? entry.rank : null;
     }
 
-    this.userRank = userEntry ? userEntry.rank : null;
     return this.userRank;
   }
 
-  // Get user's position with enhanced mobile support
+  // Get user's position even if not in top 100
   async getUserPosition(timeframe = 'all') {
-    if (!window.supabaseClient) {
-      return this.getCachedUserPosition(timeframe);
-    }
+    if (!window.supabaseClient) return null;
 
     try {
       const user = this.authManager.getCurrentUser();
@@ -517,20 +343,17 @@ class LeaderboardManager {
 
       if (isGuest) {
         userQuery = userQuery.eq('session_id', this.sessionId);
-      } else if (user?.id) {
+      } else if (user) {
         userQuery = userQuery.eq('user_id', user.id);
       } else {
         return null;
       }
 
-      const { data: userEntry, error: userError } = await userQuery.maybeSingle();
+      const { data: userEntry, error: userError } = await userQuery.single();
       
-      if (userError || !userEntry) {
-        console.log('User entry not found in leaderboard');
-        return null;
-      }
+      if (userError || !userEntry) return null;
 
-      // Count players with higher scores
+      // Count how many players have higher scores
       let countQuery = window.supabaseClient
         .from('leaderboard_entries')
         .select('id', { count: 'exact', head: true })
@@ -553,282 +376,108 @@ class LeaderboardManager {
 
       const { count, error: countError } = await countQuery;
 
-      if (countError) {
-        console.error('Error counting higher scores:', countError);
-        throw countError;
-      }
+      if (countError) throw countError;
 
-      const position = {
+      return {
         rank: (count || 0) + 1,
         entry: userEntry
       };
-
-      // Cache the position
-      this.cacheUserPosition(timeframe, position);
-
-      return position;
     } catch (error) {
       console.error('Failed to get user position:', error);
-      return this.getCachedUserPosition(timeframe);
+      return null;
     }
   }
 
-  // Cache user position
-  cacheUserPosition(timeframe, position) {
-    try {
-      const cacheKey = `watches_lq_user_position_${timeframe}`;
-      const cacheData = {
-        position: position,
-        timestamp: new Date().toISOString()
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-    } catch (error) {
-      console.error('Failed to cache user position:', error);
-    }
-  }
-
-  // Get cached user position
-  getCachedUserPosition(timeframe) {
-    try {
-      const cacheKey = `watches_lq_user_position_${timeframe}`;
-      const cached = localStorage.getItem(cacheKey);
-      
-      if (cached) {
-        const cacheData = JSON.parse(cached);
-        const cacheAge = Date.now() - new Date(cacheData.timestamp).getTime();
-        
-        // Use cached data if less than 5 minutes old
-        if (cacheAge < 5 * 60 * 1000) {
-          return cacheData.position;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to get cached user position:', error);
-    }
-    
-    return null;
-  }
-
-  // Enhanced leaderboard stats with caching
   async getLeaderboardStats() {
     if (!window.supabaseClient) {
-      return this.getCachedStats();
+      console.warn('Supabase not available for stats');
+      return {
+        totalPlayers: 0,
+        totalLevelsCompleted: 0,
+        averageScore: 0,
+        highestScore: 0
+      };
     }
 
     try {
       const { data, error } = await window.supabaseClient
         .from('leaderboard_entries')
-        .select('total_score, levels_completed, is_guest');
+        .select('total_score, levels_completed');
 
       if (error) {
         console.error('Failed to get leaderboard stats:', error);
-        return this.getCachedStats();
+        return {
+          totalPlayers: 0,
+          totalLevelsCompleted: 0,
+          averageScore: 0,
+          highestScore: 0
+        };
       }
 
+      // Handle empty data
       if (!data || data.length === 0) {
         return {
           totalPlayers: 0,
-          totalGuests: 0,
-          totalRegistered: 0,
+          totalLevelsCompleted: 0,
           averageScore: 0,
-          highestScore: 0,
-          totalLevelsCompleted: 0
+          highestScore: 0
         };
       }
 
       const totalPlayers = data.length;
-      const totalGuests = data.filter(e => e.is_guest).length;
-      const totalRegistered = totalPlayers - totalGuests;
       const totalLevelsCompleted = data.reduce((sum, e) => sum + (e.levels_completed || 0), 0);
       const averageScore = Math.round(data.reduce((sum, e) => sum + (e.total_score || 0), 0) / totalPlayers);
       const scores = data.map(e => e.total_score || 0).filter(s => s > 0);
       const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
 
-      const stats = {
+      return {
         totalPlayers,
-        totalGuests,
-        totalRegistered,
+        totalLevelsCompleted,
         averageScore,
-        highestScore,
-        totalLevelsCompleted
+        highestScore
       };
-
-      // Cache the stats
-      this.cacheStats(stats);
-
-      return stats;
     } catch (error) {
       console.error('Failed to get leaderboard stats:', error);
-      return this.getCachedStats();
-    }
-  }
-
-  // Cache stats
-  cacheStats(stats) {
-    try {
-      const cacheData = {
-        stats: stats,
-        timestamp: new Date().toISOString()
+      return {
+        totalPlayers: 0,
+        totalLevelsCompleted: 0,
+        averageScore: 0,
+        highestScore: 0
       };
-      localStorage.setItem('watches_lq_leaderboard_stats', JSON.stringify(cacheData));
-    } catch (error) {
-      console.error('Failed to cache stats:', error);
     }
   }
 
-  // Get cached stats
-  getCachedStats() {
-    try {
-      const cached = localStorage.getItem('watches_lq_leaderboard_stats');
-      
-      if (cached) {
-        const cacheData = JSON.parse(cached);
-        const cacheAge = Date.now() - new Date(cacheData.timestamp).getTime();
-        
-        // Use cached data if less than 10 minutes old
-        if (cacheAge < 10 * 60 * 1000) {
-          return cacheData.stats;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to get cached stats:', error);
-    }
-    
-    return {
-      totalPlayers: 0,
-      totalGuests: 0,
-      totalRegistered: 0,
-      averageScore: 0,
-      highestScore: 0,
-      totalLevelsCompleted: 0
-    };
-  }
-
-  // Enhanced guest to user conversion
-  async convertGuestToUser(userId) {
-    if (!window.supabaseClient) {
-      console.warn('Cannot convert guest to user - Supabase not available');
-      return false;
-    }
-
-    try {
-      console.log('Converting guest to registered user:', { sessionId: this.sessionId, userId });
-
-      // Start a transaction-like operation
-      const updates = [];
-
-      // Update session
-      updates.push(
-        window.supabaseClient
-          .from('user_sessions')
-          .update({
-            user_id: userId,
-            is_guest: false,
-            updated_at: new Date().toISOString()
-          })
-          .eq('session_id', this.sessionId)
-      );
-
-      // Update leaderboard entry
-      updates.push(
-        window.supabaseClient
-          .from('leaderboard_entries')
-          .update({
-            user_id: userId,
-            is_guest: false,
-            updated_at: new Date().toISOString()
-          })
-          .eq('session_id', this.sessionId)
-      );
-
-      // Execute all updates
-      const results = await Promise.all(updates);
-      
-      // Check for errors
-      for (const result of results) {
-        if (result.error) {
-          console.error('Conversion error:', result.error);
-          throw result.error;
-        }
-      }
-
-      // Clear cached data to force refresh
-      this.clearLeaderboardCache();
-
-      console.log('Guest successfully converted to registered user');
-      return true;
-    } catch (error) {
-      console.error('Failed to convert guest to user:', error);
-      return false;
-    }
-  }
-
-  // Clear all leaderboard cache
-  clearLeaderboardCache() {
-    const keys = [
-      'watches_lq_leaderboard_all',
-      'watches_lq_leaderboard_weekly',
-      'watches_lq_leaderboard_daily',
-      'watches_lq_user_position_all',
-      'watches_lq_user_position_weekly',
-      'watches_lq_user_position_daily',
-      'watches_lq_leaderboard_stats'
-    ];
-
-    keys.forEach(key => {
-      try {
-        localStorage.removeItem(key);
-      } catch (error) {
-        console.error(`Failed to remove cache key ${key}:`, error);
-      }
-    });
-
-    console.log('Leaderboard cache cleared');
-  }
-
-  // Get country from timezone with better mapping
+  // Get country from timezone (rough approximation)
   getCountryFromTimezone() {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const countryMap = {
-      // Middle East
       'Asia/Dubai': 'AE',
       'Asia/Abu_Dhabi': 'AE',
       'Asia/Riyadh': 'SA',
       'Asia/Kuwait': 'KW',
-      'Asia/Qatar': 'QA',
+      'Asia/Doha': 'QA',
       'Asia/Bahrain': 'BH',
       'Asia/Muscat': 'OM',
-      
-      // Europe
       'Europe/London': 'GB',
       'Europe/Paris': 'FR',
       'Europe/Berlin': 'DE',
-      'Europe/Rome': 'IT',
-      'Europe/Madrid': 'ES',
-      'Europe/Amsterdam': 'NL',
-      'Europe/Zurich': 'CH',
-      
-      // Americas
       'America/New_York': 'US',
       'America/Los_Angeles': 'US',
-      'America/Chicago': 'US',
-      'America/Denver': 'US',
-      'America/Toronto': 'CA',
-      'America/Vancouver': 'CA',
-      
-      // Asia Pacific
       'Asia/Tokyo': 'JP',
       'Asia/Shanghai': 'CN',
       'Asia/Singapore': 'SG',
-      'Asia/Hong_Kong': 'HK',
-      'Asia/Seoul': 'KR',
-      'Asia/Mumbai': 'IN',
-      'Asia/Bangkok': 'TH',
-      'Australia/Sydney': 'AU',
-      'Australia/Melbourne': 'AU'
+      'Asia/Hong_Kong': 'HK'
     };
     
     return countryMap[timezone] || 'XX';
+  }
+
+  // Format display name for leaderboard
+  formatDisplayName(name, isGuest) {
+    if (isGuest) {
+      return `${name} (Guest)`;
+    }
+    return name;
   }
 
   // Get medal emoji based on rank
@@ -846,33 +495,60 @@ class LeaderboardManager {
     const totalScore = this.gameManager.getTotalScore();
     const totalCompleted = this.gameManager.getTotalLevelsCompleted();
     
-    // Allow submission if user has played at least one level or has non-default score
-    return totalCompleted > 0 || totalScore !== 100;
+    // Require at least 1 completed level or minimum score
+    return totalCompleted > 0 || totalScore > 100;
   }
 
-  // Network status monitoring for mobile
-  setupNetworkMonitoring() {
-    if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => {
-        console.log('Network connection restored');
-        this.syncLocalLeaderboardData();
-      });
-
-      window.addEventListener('offline', () => {
-        console.log('Network connection lost');
-      });
+  // Clear guest data (for privacy)
+  async clearGuestData() {
+    if (this.authManager.isGuestUser() && window.supabaseClient) {
+      try {
+        await window.supabaseClient
+          .from('user_sessions')
+          .delete()
+          .eq('session_id', this.sessionId);
+        
+        localStorage.removeItem('watches_lq_session_id');
+        this.sessionId = this.getOrCreateSessionId();
+        
+        console.log('Guest data cleared');
+        return true;
+      } catch (error) {
+        console.error('Failed to clear guest data:', error);
+        return false;
+      }
     }
+    return false;
   }
 
-  // Initialize network monitoring
-  init() {
-    this.setupNetworkMonitoring();
-    
-    // Try to sync any pending data on initialization
-    if (navigator.onLine) {
-      setTimeout(() => {
-        this.syncLocalLeaderboardData();
-      }, 1000);
+  // Convert guest to registered user
+  async convertGuestToUser(userId) {
+    if (!window.supabaseClient) return false;
+
+    try {
+      // Update session
+      await window.supabaseClient
+        .from('user_sessions')
+        .update({
+          user_id: userId,
+          is_guest: false
+        })
+        .eq('session_id', this.sessionId);
+
+      // Update leaderboard entry
+      await window.supabaseClient
+        .from('leaderboard_entries')
+        .update({
+          user_id: userId,
+          is_guest: false
+        })
+        .eq('session_id', this.sessionId);
+
+      console.log('Guest converted to registered user');
+      return true;
+    } catch (error) {
+      console.error('Failed to convert guest:', error);
+      return false;
     }
   }
 }
