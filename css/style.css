@@ -586,9 +586,9 @@ body {
   padding: 4px 8px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.5);
-  color: white;
-  font-size: 12px;
-  border-radius: 4px;
+  font-size: 1rem;
+  padding: 0;
+  border-radius: 0;
   cursor: pointer;
 }
 
@@ -1228,7 +1228,7 @@ button, .btn, .letter-btn, .difficulty-card, .level-tile {
 
 .entry-name .guest-badge {
     display: inline-block;
-    background: #6c757d;
+  background: transparent;
     color: white;
     font-size: 0.7rem;
     padding: 2px 6px;
@@ -1364,6 +1364,12 @@ button, .btn, .letter-btn, .difficulty-card, .level-tile {
     padding: 0.5rem;
     background: white;
     border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.preview-entry.current-user {
+  background: linear-gradient(to right, rgba(170, 86, 127, 0.1), white);
+  border-left: 3px solid var(--primary-color);
 }
 
 .preview-entry .rank {
@@ -1376,9 +1382,11 @@ button, .btn, .letter-btn, .difficulty-card, .level-tile {
     flex: 1;
     margin: 0 1rem;
     color: var(--text-primary);
+  font-size: 0.9rem;
 }
 
 .preview-entry .score {
     font-weight: 600;
     color: var(--primary-color);
+  font-size: 0.9rem;
 }
