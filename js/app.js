@@ -458,8 +458,29 @@ async init() {
     const result = await this.authManager.registerWithEmail(email, password, name);
     
     if (result.success) {
-      // Handle guest progress conversion
-      await this.handleGuestToUserConversion(result.user);
+      // Check for guest progress
+      const guestProgressStr = localStorage.getItem('watches_lq_guest_progress');
+      if (guestProgressStr) {
+        try {
+          const guestProgress = JSON.parse(guestProgressStr);
+          
+          // Merge guest progress with new user
+          this.gameManager.userProgress = guestProgress.progress;
+          this.gameManager.totalScore = guestProgress.score;
+          await this.gameManager.saveProgress();
+          
+          // Convert guest leaderboard entry to user
+          if (this.leaderboardManager && result.user) {
+            await this.leaderboardManager.convertGuestToUser(result.user.id);
+          }
+          
+          localStorage.removeItem('watches_lq_guest_progress');
+          
+          this.showMessage('Account created! Your guest progress has been saved.');
+        } catch (error) {
+          console.error('Failed to transfer guest progress:', error);
+        }
+      }
       
       if (result.requiresConfirmation) {
         this.showMessage('Please check your email to confirm your account');
@@ -471,60 +492,6 @@ async init() {
     }
   }
 
-  // Enhanced guest to user conversion
-  async handleGuestToUserConversion(newUser) {
-    if (!newUser) return;
-
-    try {
-      // Check if there's guest progress to convert
-      const wasGuest = this.authManager.isGuestUser();
-      const guestProgressStr = localStorage.getItem('watches_lq_guest_progress');
-      
-      if (wasGuest || guestProgressStr) {
-        console.log('Converting guest progress to registered user');
-        
-        let guestProgress = null;
-        
-        if (guestProgressStr) {
-          guestProgress = JSON.parse(guestProgressStr);
-        } else if (wasGuest) {
-          // Current session is guest, use current progress
-          guestProgress = {
-            progress: this.gameManager.userProgress,
-            score: this.gameManager.totalScore
-          };
-        }
-        
-        if (guestProgress) {
-          // Transfer progress to new user
-          this.gameManager.userProgress = guestProgress.progress || this.gameManager.userProgress;
-          this.gameManager.totalScore = guestProgress.score || this.gameManager.totalScore;
-          
-          // Save progress under new user
-          await this.gameManager.saveProgress();
-          
-          // Convert leaderboard entry
-          if (this.leaderboardManager) {
-            const conversionResult = await this.leaderboardManager.convertGuestToUser(newUser.id);
-            if (conversionResult) {
-              console.log('Leaderboard entry converted successfully');
-            }
-          }
-          
-          // Clean up guest data
-          localStorage.removeItem('watches_lq_guest_progress');
-          
-          const levelsCompleted = this.gameManager.getTotalLevelsCompleted();
-          this.showMessage(`Account created! Your progress has been saved: ${guestProgress.score} points, ${levelsCompleted} levels completed.`);
-        } else {
-          this.showMessage('Account created successfully!');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to convert guest progress:', error);
-      this.showMessage('Account created! Note: Some guest progress may not have been transferred.');
-    }
-  }
   async handleLogout() {
     const result = await this.authManager.logout();
     if (result.success) {
@@ -582,7 +549,7 @@ async init() {
     if (!this.leaderboardManager) return;
     
     try {
-      // Fetch top 5 for preview with error handling
+      // Fetch top 5 for preview
       const topPlayers = await this.leaderboardManager.fetchLeaderboard('all', 5);
       
       const previewContainer = document.getElementById('leaderboard-preview');
@@ -593,10 +560,8 @@ async init() {
           <div class="leaderboard-preview-header">
             <h3>🏆 Leaderboard</h3>
           </div>
-          <div class="empty-state" style="padding: 1rem; text-align: center;">
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">
-              ${navigator.onLine ? 'No rankings yet. Be the first!' : 'Leaderboard loading...'}
-            </p>
+          <div class="empty-state" style="padding: 2rem;">
+            <p style="color: var(--text-secondary);">No rankings yet. Be the first!</p>
           </div>
         `;
       } else {
@@ -609,10 +574,7 @@ async init() {
             ${topPlayers.map(entry => `
               <div class="preview-entry">
                 <span class="rank">${this.leaderboardManager.getMedalEmoji(entry.rank)} ${entry.rank}</span>
-                <span class="name">
-                  ${entry.display_name}${entry.is_guest ? ' 👤' : ''}
-                  ${entry.is_current_user ? ' (You)' : ''}
-                </span>
+                <span class="name">${entry.display_name}${entry.is_guest ? ' (Guest)' : ''}</span>
                 <span class="score">${entry.total_score} pts</span>
               </div>
             `).join('')}
@@ -621,20 +583,6 @@ async init() {
       }
     } catch (error) {
       console.error('Failed to update leaderboard preview:', error);
-      
-      const previewContainer = document.getElementById('leaderboard-preview');
-      if (previewContainer) {
-        previewContainer.innerHTML = `
-          <div class="leaderboard-preview-header">
-            <h3>🏆 Leaderboard</h3>
-          </div>
-          <div class="empty-state" style="padding: 1rem; text-align: center;">
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">
-              ${navigator.onLine ? 'Unable to load rankings' : 'Offline - rankings unavailable'}
-            </p>
-          </div>
-        `;
-      }
     }
   }
 
@@ -689,9 +637,6 @@ async init() {
         return;
       }
       
-      // Hide empty state
-      document.getElementById('leaderboard-empty').classList.add('hidden');
-      
       // Get current user info
       const user = this.authManager.getCurrentUser();
       const isGuest = this.authManager.isGuestUser();
@@ -700,8 +645,7 @@ async init() {
       // Display entries
       const listContainer = document.getElementById('leaderboard-list');
       listContainer.innerHTML = entries.map(entry => {
-        const isCurrentUser = entry.is_current_user || 
-                             (isGuest && entry.session_id === sessionId) || 
+        const isCurrentUser = (isGuest && entry.session_id === sessionId) || 
                              (!isGuest && user && entry.user_id === user.id);
         
         return `
@@ -712,7 +656,7 @@ async init() {
             <div class="entry-info">
               <div class="entry-name">
                 ${entry.display_name}
-                ${entry.is_guest ? '<span class="guest-badge">👤</span>' : ''}
+                ${entry.is_guest ? '<span class="guest-badge">Guest</span>' : ''}
                 ${isCurrentUser ? '<span style="color: var(--primary-color); margin-left: 0.5rem;">← You</span>' : ''}
               </div>
               <div class="entry-details">
@@ -720,7 +664,6 @@ async init() {
                 Easy: ${entry.easy_completed || 0} • 
                 Medium: ${entry.medium_completed || 0} • 
                 Hard: ${entry.hard_completed || 0}
-                ${entry.country_code && entry.country_code !== 'XX' ? ` • ${this.getCountryFlag(entry.country_code)}` : ''}
               </div>
             </div>
             <div class="entry-score">
@@ -744,37 +687,10 @@ async init() {
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
       document.getElementById('leaderboard-loading').classList.add('hidden');
-      
-      // Show appropriate error message
-      const errorMessage = navigator.onLine 
-        ? 'Failed to load leaderboard. Please try again.' 
-        : 'Leaderboard unavailable offline. Connect to internet and refresh.';
-      
-      this.showError(errorMessage);
-      
-      // Show empty state with error info
-      document.getElementById('leaderboard-empty').classList.remove('hidden');
-      const emptyState = document.getElementById('leaderboard-empty');
-      if (emptyState) {
-        emptyState.innerHTML = `
-          <div class="empty-icon">⚠️</div>
-          <h3>Unable to Load Rankings</h3>
-          <p>${errorMessage}</p>
-        `;
-      }
+      this.showError('Failed to load leaderboard. Please try again.');
     }
   }
 
-  // Get country flag emoji
-  getCountryFlag(countryCode) {
-    const flagMap = {
-      'AE': '🇦🇪', 'SA': '🇸🇦', 'KW': '🇰🇼', 'QA': '🇶🇦', 'BH': '🇧🇭', 'OM': '🇴🇲',
-      'GB': '🇬🇧', 'FR': '🇫🇷', 'DE': '🇩🇪', 'IT': '🇮🇹', 'ES': '🇪🇸', 'NL': '🇳🇱', 'CH': '🇨🇭',
-      'US': '🇺🇸', 'CA': '🇨🇦', 'JP': '🇯🇵', 'CN': '🇨🇳', 'SG': '🇸🇬', 'HK': '🇭🇰', 'KR': '🇰🇷',
-      'IN': '🇮🇳', 'TH': '🇹🇭', 'AU': '🇦🇺'
-    };
-    return flagMap[countryCode] || '';
-  }
   async updateUserPosition(timeframe) {
     const position = await this.leaderboardManager.getUserPosition(timeframe);
     
@@ -799,17 +715,6 @@ async init() {
       document.getElementById('total-players').textContent = stats.totalPlayers || 0;
       document.getElementById('avg-score').textContent = stats.averageScore || 0;
       document.getElementById('top-score').textContent = stats.highestScore || 0;
-      
-      // Update additional stats if elements exist
-      const guestCountEl = document.getElementById('total-guests');
-      if (guestCountEl) {
-        guestCountEl.textContent = stats.totalGuests || 0;
-      }
-      
-      const registeredCountEl = document.getElementById('total-registered');
-      if (registeredCountEl) {
-        registeredCountEl.textContent = stats.totalRegistered || 0;
-      }
     }
   }
 
@@ -1402,9 +1307,4 @@ document.head.appendChild(style);
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, creating app...');
   window.app = new App();
-  
-  // Initialize leaderboard network monitoring
-  if (window.app && window.app.leaderboardManager) {
-    window.app.leaderboardManager.init();
-  }
 });
