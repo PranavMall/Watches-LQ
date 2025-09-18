@@ -74,12 +74,8 @@ class GameManager {
       const difficulties = ['easy', 'medium', 'hard'];
       
       for (const difficulty of difficulties) {
-      if (this.leaderboardManager) {
-        // Always try to update leaderboard, let the manager decide if it should submit
-        const updateResult = await this.leaderboardManager.updateLeaderboardEntry();
-        if (updateResult && updateResult.stored_locally) {
-          console.log('Leaderboard update stored locally for later sync');
-        }
+        try {
+          const response = await fetch(`data/${difficulty}.json`);
           if (response.ok) {
             const data = await response.json();
             if (data && data.length > 0) {
@@ -212,7 +208,7 @@ saveProgressSync() {
   try {
     // Save to localStorage immediately
     localStorage.setItem('watches_lq_total_score', this.totalScore.toString());
-        if (this.leaderboardManager) {
+    localStorage.setItem('watches_lq_progress', JSON.stringify(this.userProgress));
     
     // Queue the Supabase save for later (non-blocking)
     const user = this.authManager.getCurrentUser();
