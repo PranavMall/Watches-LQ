@@ -103,12 +103,16 @@ class AuthManager {
       }
 
       if (data.user) {
-        // Create user profile
-        await this.createUserProfile(data.user.id, displayName, email);
-        this.currentUser = data.user;
-        console.log('Registration successful!');
-        return { success: true, requiresConfirmation: !data.session };
-      }
+      // Create user profile AND initialize progress
+      await this.createUserProfile(data.user.id, displayName, email);
+      this.currentUser = data.user;
+      
+      // ✅ NEW: Load the newly created progress records
+      await this.loadUserProfile();
+      
+      console.log('Registration successful!');
+      return { success: true, requiresConfirmation: !data.session };
+    }
     } catch (error) {
       console.error('Registration error:', error);
       return { success: false, error: error.message };
@@ -116,31 +120,54 @@ class AuthManager {
   }
 
   async createUserProfile(userId, displayName, email) {
-    try {
-      if (!window.supabaseClient) {
-        console.warn('Supabase not available for profile creation');
-        return;
-      }
-
-      const { error } = await window.supabaseClient
-        .from('user_profiles')
-        .insert([
-          {
-            id: userId,
-            display_name: displayName,
-            email: email.trim().toLowerCase(),
-            total_score: 100,
-            created_at: new Date().toISOString()
-          }
-        ]);
-
-      if (error && error.code !== '23505') { // Ignore duplicate key error
-        console.error('Profile creation error:', error);
-      }
-    } catch (error) {
-      console.error('Profile creation error:', error);
+  try {
+    if (!window.supabaseClient) {
+      console.warn('Supabase not available for profile creation');
+      return;
     }
+
+    // Create user profile
+    const { error: profileError } = await window.supabaseClient
+      .from('user_profiles')
+      .insert([{
+        id: userId,
+        display_name: displayName,
+        email: email.trim().toLowerCase(),
+        total_score: 100,
+        created_at: new Date().toISOString()
+      }]);
+
+    if (profileError && profileError.code !== '23505') {
+      console.error('Profile creation error:', profileError);
+    }
+
+    // ✅ NEW: Initialize user_progress for all difficulties
+    const difficulties = ['easy', 'medium', 'hard'];
+    const progressRecords = difficulties.map(difficulty => ({
+      user_id: userId,
+      difficulty: difficulty,
+      completed_levels: 0,
+      level_scores: [],
+      failed_levels: [],
+      completed_levels_array: [],
+      total_score: 100,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
+
+    const { error: progressError } = await window.supabaseClient
+      .from('user_progress')
+      .insert(progressRecords);
+
+    if (progressError && progressError.code !== '23505') {
+      console.error('Progress initialization error:', progressError);
+    }
+
+    console.log('✅ User profile and progress initialized successfully');
+  } catch (error) {
+    console.error('Profile creation error:', error);
   }
+}
 
   async loadUserProfile() {
     if (!this.currentUser || !window.supabaseClient) return null;
