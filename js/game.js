@@ -95,33 +95,68 @@ class GameManager {
   }
 
   async loadUserProgress() {
-    const user = this.authManager.getCurrentUser();
-    
-    if (user && !this.authManager.isGuestUser() && window.supabaseClient) {
-      try {
-        const { data, error } = await window.supabaseClient
-          .from('user_progress')
-          .select('*')
-          .eq('user_id', user.id);
+  const user = this.authManager.getCurrentUser();
+  
+  if (user && !this.authManager.isGuestUser() && window.supabaseClient) {
+    try {
+      const { data, error } = await window.supabaseClient
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', user.id);
 
-        if (!error && data && data.length > 0) {
-          data.forEach(record => {
-            this.userProgress[record.difficulty] = {
-              completed: record.completed_levels || 0,
-              scores: record.level_scores || [],
-              failed: record.failed_levels || [],
-              completedLevels: record.completed_levels_array || []
-            };
-            if (record.total_score) {
-              this.totalScore = record.total_score;
-            }
-          });
-        }
-      } catch (error) {
-        console.warn('Failed to load user progress from server:', error);
+      if (!error && data && data.length > 0) {
+        data.forEach(record => {
+          this.userProgress[record.difficulty] = {
+            completed: record.completed_levels || 0,
+            scores: record.level_scores || [],
+            failed: record.failed_levels || [],
+            completedLevels: record.completed_levels_array || []
+          };
+          if (record.total_score) {
+            this.totalScore = record.total_score;
+          }
+        });
+      } else if (!error && (!data || data.length === 0)) {
+        // ✅ NEW: If no progress records exist, create them
+        console.log('No progress records found, initializing...');
+        await this.initializeUserProgress(user.id);
       }
+    } catch (error) {
+      console.warn('Failed to load user progress from server:', error);
     }
   }
+}
+  / ✅ NEW: Add this method to GameManager
+async initializeUserProgress(userId) {
+  if (!window.supabaseClient) return;
+  
+  try {
+    const difficulties = ['easy', 'medium', 'hard'];
+    const progressRecords = difficulties.map(difficulty => ({
+      user_id: userId,
+      difficulty: difficulty,
+      completed_levels: 0,
+      level_scores: [],
+      failed_levels: [],
+      completed_levels_array: [],
+      total_score: this.totalScore || 100,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
+
+    const { error } = await window.supabaseClient
+      .from('user_progress')
+      .insert(progressRecords);
+
+    if (error && error.code !== '23505') {
+      console.error('Failed to initialize progress:', error);
+    } else {
+      console.log('✅ Progress records initialized successfully');
+    }
+  } catch (error) {
+    console.error('Progress initialization error:', error);
+  }
+}
 
 async saveProgress() {
   localStorage.setItem('watches_lq_total_score', this.totalScore.toString());
