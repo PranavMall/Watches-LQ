@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Tool - Dubai Watch Week</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+        .check {
+            padding: 10px;
+            margin: 5px 0;
+            background: #2a2a2a;
+            border-left: 4px solid #666;
+        }
+        .check.success {
+            border-left-color: #0f0;
+        }
+        .check.error {
+            border-left-color: #f00;
+            color: #f00;
+        }
+        .check.warning {
+            border-left-color: #ff0;
+            color: #ff0;
+        }
+        h1 {
+            color: #0ff;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0f0;
+            border: none;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #0ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Dubai Watch Week - Diagnostic Tool</h1>
+    <p>This tool checks if all your files and dependencies are loading correctly.</p>
+    
+    <button onclick="runDiagnostics()">Run Diagnostics</button>
+    <button onclick="location.reload()">Refresh Page</button>
+    
+    <div id="results"></div>
+
+    <!-- Load Supabase first -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Load your files WITH defer -->
+    <script defer src="js/config.js"></script>
+    <script defer src="js/auth.js"></script>
+    <script defer src="js/game.js"></script>
+    <script defer src="js/leaderboard.js"></script>
+    <script defer src="js/app.js"></script>
+
+    <script>
+        let diagnosticResults = [];
+
+        function addCheck(message, status) {
+            diagnosticResults.push({ message, status });
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>Diagnostic Results:</h2>';
+            
+            diagnosticResults.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `check ${result.status}`;
+                div.textContent = result.message;
+                resultsDiv.appendChild(div);
+            });
+        }
+
+        function runDiagnostics() {
+            diagnosticResults = [];
+            
+            console.log('🔍 Running diagnostics...');
+
+            // Check 1: Supabase Library
+            if (typeof supabase !== 'undefined') {
+                addCheck('✅ Supabase library loaded', 'success');
+            } else {
+                addCheck('❌ Supabase library NOT loaded', 'error');
+            }
+
+            // Check 2: Supabase Client
+            if (typeof window.supabaseClient !== 'undefined' && window.supabaseClient !== null) {
+                addCheck('✅ Supabase client created', 'success');
+            } else {
+                addCheck('❌ Supabase client NOT created', 'error');
+            }
+
+            // Check 3: SUPABASE_CONFIG
+            if (typeof SUPABASE_CONFIG !== 'undefined') {
+                addCheck('✅ SUPABASE_CONFIG defined', 'success');
+            } else {
+                addCheck('❌ SUPABASE_CONFIG NOT defined (config.js may not be loaded)', 'error');
+            }
+
+            // Check 4: GAME_CONFIG
+            if (typeof GAME_CONFIG !== 'undefined') {
+                addCheck('✅ GAME_CONFIG defined', 'success');
+            } else {
+                addCheck('❌ GAME_CONFIG NOT defined (config.js may not be loaded)', 'error');
+            }
+
+            // Check 5: AuthManager Class
+            if (typeof AuthManager !== 'undefined') {
+                addCheck('✅ AuthManager class defined (auth.js loaded)', 'success');
+                
+                // Try to instantiate
+                try {
+                    const testAuth = new AuthManager();
+                    addCheck('✅ AuthManager can be instantiated', 'success');
+                } catch (e) {
+                    addCheck('❌ AuthManager exists but cannot be instantiated: ' + e.message, 'error');
+                }
+            } else {
+                addCheck('❌ AuthManager class NOT defined (auth.js not loaded or has errors)', 'error');
+            }
+
+            // Check 6: GameManager Class (THE KEY ONE!)
+            if (typeof GameManager !== 'undefined') {
+                addCheck('✅ GameManager class defined (game.js loaded)', 'success');
+                
+                // Try to instantiate (needs AuthManager)
+                try {
+                    if (typeof AuthManager !== 'undefined') {
+                        const testAuth = new AuthManager();
+                        const testGame = new GameManager(testAuth);
+                        addCheck('✅ GameManager can be instantiated', 'success');
+                    }
+                } catch (e) {
+                    addCheck('❌ GameManager exists but cannot be instantiated: ' + e.message, 'error');
+                }
+            } else {
+                addCheck('❌ GameManager class NOT defined (game.js not loaded or has errors)', 'error');
+            }
+
+            // Check 7: LeaderboardManager Class
+            if (typeof LeaderboardManager !== 'undefined') {
+                addCheck('✅ LeaderboardManager class defined (leaderboard.js loaded)', 'success');
+            } else {
+                addCheck('❌ LeaderboardManager class NOT defined (leaderboard.js not loaded or has errors)', 'error');
+            }
+
+            // Check 8: App Class
+            if (typeof App !== 'undefined') {
+                addCheck('✅ App class defined (app.js loaded)', 'success');
+            } else {
+                addCheck('❌ App class NOT defined (app.js not loaded or has errors)', 'error');
+            }
+
+            // Check 9: window.app instance
+            if (typeof window.app !== 'undefined') {
+                addCheck('✅ App instance created (window.app exists)', 'success');
+            } else {
+                addCheck('⚠️ App instance NOT created yet (this is OK if DOM not fully loaded)', 'warning');
+            }
+
+            // Check 10: Required DOM elements
+            const requiredElements = [
+                'loading-screen',
+                'start-screen',
+                'level-select-screen',
+                'game-screen'
+            ];
+
+            let missingElements = [];
+            requiredElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (!element) {
+                    missingElements.push(id);
+                }
+            });
+
+            if (missingElements.length === 0) {
+                addCheck('✅ All required DOM elements present', 'success');
+            } else {
+                addCheck('❌ Missing DOM elements: ' + missingElements.join(', '), 'error');
+            }
+
+            // Check 11: Files exist check (indirect)
+            const scriptTags = document.querySelectorAll('script[src^="js/"]');
+            addCheck(`ℹ️ Found ${scriptTags.length} local script tags`, 'success');
+
+            // Check 12: Script attributes
+            let hasDefer = 0;
+            let hasAsync = 0;
+            let hasNeither = 0;
+
+            scriptTags.forEach(script => {
+                if (script.defer) hasDefer++;
+                else if (script.async) hasAsync++;
+                else hasNeither++;
+            });
+
+            if (hasDefer === scriptTags.length) {
+                addCheck(`✅ All ${hasDefer} scripts use 'defer' (GOOD!)`, 'success');
+            } else if (hasNeither > 0) {
+                addCheck(`⚠️ ${hasNeither} scripts have no defer/async (can cause loading issues!)`, 'warning');
+            }
+
+            // Summary
+            const errors = diagnosticResults.filter(r => r.status === 'error').length;
+            const warnings = diagnosticResults.filter(r => r.status === 'warning').length;
+            const successes = diagnosticResults.filter(r => r.status === 'success').length;
+
+            addCheck('', 'success');
+            addCheck(`SUMMARY: ${successes} passed, ${warnings} warnings, ${errors} errors`, 
+                errors > 0 ? 'error' : (warnings > 0 ? 'warning' : 'success'));
+
+            if (errors === 0) {
+                addCheck('✅ ALL CHECKS PASSED! Your game should work!', 'success');
+            } else {
+                addCheck('❌ ERRORS FOUND! Fix the errors above and run diagnostics again.', 'error');
+            }
+
+            displayResults();
+        }
+
+        // Auto-run after page fully loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log('Auto-running diagnostics...');
+                runDiagnostics();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
